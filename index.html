@@ -7,6 +7,9 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="theme-color" content="#000000">
 <link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="shortcut icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="stylesheet" href="pixfont.css">
 <title>Commander Life</title>
 <style>
@@ -198,6 +201,17 @@
   <div class="bd"><div id="cardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px"></div></div>
 </div>
 
+<div class="sheet" id="cam"><div class="hd"><h2>Foto dalla fotocamera</h2><button id="camClose">Annulla</button></div>
+  <div class="bd" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+    <video id="camVid" autoplay playsinline muted style="max-width:100%;max-height:56vh;border-radius:12px;background:#000"></video>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      <span class="btn" id="camShot">Scatta</span>
+      <span class="btn" id="camFlip">Cambia camera</span>
+    </div>
+    <div id="camErr" style="color:#f88;font-size:14px;text-align:center;max-width:480px"></div>
+  </div>
+</div>
+
 <input type="file" id="filePick" accept="image/*">
 <input type="file" id="importPick" accept="application/json,.json">
 <div id="toast"></div>
@@ -288,11 +302,12 @@ var st;
 try{ st=JSON.parse(localStorage.getItem(LS)||"null"); }catch(e){ st=null; }
 if(!st) st=fresh(4,40);
 function newSeat(i,life){ return {name:"Giocatore "+(i+1),color:COLORS[i%6],bg:{type:"solid"},life:life,counters:{},custom:[],cmdrs:[{name:"Comandante",art:null}],cmdDmg:{},rot:null,hist:[]}; }
-function fresh(n,life){ var s={n:n,start:life,active:0,monarch:-1,turnMode:false,vibrate:true,sound:true,layout:"grid",presets:[],match:{elapsed:0,turnElapsed:0,running:false},p:[]}; for(var i=0;i<6;i++) s.p.push(newSeat(i,life)); return s; }
+function fresh(n,life){ var s={n:n,start:life,active:0,monarch:-1,turnMode:false,vibrate:false,sound:true,layout:"grid",presets:[],match:{elapsed:0,turnElapsed:0,running:false},p:[]}; for(var i=0;i<6;i++) s.p.push(newSeat(i,life)); return s; }
 if(!st.p||st.p.length<6){ st.p=st.p||[]; for(var _i=st.p.length;_i<6;_i++) st.p.push(newSeat(_i,st.start||40)); }
 if(st.monarch===undefined) st.monarch=-1;
 if(st.turnMode===undefined) st.turnMode=false;
-if(st.vibrate===undefined) st.vibrate=true;
+if(st.vibrate===undefined) st.vibrate=false;
+if(!st.vibMigrated){ st.vibrate=false; st.vibMigrated=true; }  /* stop the browser permission prompt by default */
 if(st.sound===undefined) st.sound=true;
 if(!st.layout) st.layout="grid";
 if(!st.presets) st.presets=[];
@@ -585,6 +600,33 @@ filePick.addEventListener("change",function(){
   fr.readAsDataURL(f);
 });
 
+/* ---------- camera capture (live frame -> background; no photo file, nothing saved to gallery) ---------- */
+var camSheet=document.getElementById("cam"), camVid=document.getElementById("camVid"),
+    camErr=document.getElementById("camErr"), camStream=null, camTarget=-1, camFacing="environment";
+function stopCam(){ try{ if(camStream){ camStream.getTracks().forEach(function(t){ t.stop(); }); } }catch(e){} camStream=null; try{ camVid.srcObject=null; }catch(e){} }
+document.getElementById("camClose").addEventListener("click",function(){ stopCam(); camSheet.className="sheet"; });
+function openCam(i){ camTarget=i; camErr.textContent=""; camSheet.className="sheet on"; startCam(); }
+function startCam(){
+  stopCam();
+  var md=navigator.mediaDevices;
+  if(!md||!md.getUserMedia){ camErr.textContent="Fotocamera non disponibile qui. Usa la versione online (https) o 'Foto dalla galleria'."; return; }
+  md.getUserMedia({video:{facingMode:camFacing},audio:false}).then(function(s){
+    camStream=s; camVid.srcObject=s; var p=camVid.play(); if(p&&p.catch) p.catch(function(){});
+  }).catch(function(e){ camErr.textContent="Accesso alla fotocamera negato o non disponibile."; });
+}
+document.getElementById("camFlip").addEventListener("click",function(){ camFacing=(camFacing==="environment")?"user":"environment"; startCam(); });
+document.getElementById("camShot").addEventListener("click",function(){
+  if(!camStream||camTarget<0) return;
+  var vw=camVid.videoWidth||640, vh=camVid.videoHeight||480;
+  var mx=1000, sc=Math.min(1,mx/Math.max(vw,vh));
+  var cv=document.createElement("canvas"); cv.width=Math.max(1,Math.round(vw*sc)); cv.height=Math.max(1,Math.round(vh*sc));
+  try{ cv.getContext("2d").drawImage(camVid,0,0,cv.width,cv.height); }catch(e){ camErr.textContent="Scatto non riuscito."; return; }
+  var data; try{ data=cv.toDataURL("image/jpeg",0.82); }catch(e){ data=null; }
+  var i=camTarget;
+  stopCam(); camSheet.className="sheet";
+  if(data){ bgCache[i]=data; idbSet("p"+i,data); st.p[i].bg={type:"img"}; save(); openPlayer(i); toast("Sfondo aggiornato"); }
+});
+
 function stepRow(label,get,set,step){
   step=step||1;
   var r=document.createElement("div"); r.className="orow";
@@ -681,9 +723,12 @@ function openPlayer(i){
     save(); openPlayer(i);
   }); });
   pBody.appendChild(pickCardBg);
-  var pick=document.createElement("div"); pick.className="btn"; pick.textContent=(pl.bg.type==="img")?"Cambia foto":"Foto dalla galleria";
+  var pick=document.createElement("div"); pick.className="btn"; pick.textContent=(pl.bg.type==="img")?"Cambia foto (galleria)":"Foto dalla galleria";
   pick.addEventListener("click",function(){ fileTarget=i; filePick.click(); });
   pBody.appendChild(pick);
+  var cam=document.createElement("div"); cam.className="btn"; cam.textContent="Scatta foto (fotocamera)";
+  cam.addEventListener("click",function(){ openCam(i); });
+  pBody.appendChild(cam);
   if(pl.bg.type==="img"||pl.bg.type==="card"){
     var rm=document.createElement("div"); rm.className="btn danger"; rm.textContent="Rimuovi sfondo";
     rm.addEventListener("click",function(){ pl.bg={type:"solid"}; delete bgCache[i]; idbDel("p"+i); save(); openPlayer(i); });
@@ -736,7 +781,7 @@ function openSettings(){
 
   g(sBody,"Opzioni");
   sBody.appendChild(toggleRow("Indicatore di turno + tasto TURNO",function(){return st.turnMode;},function(v){ st.turnMode=v; }));
-  sBody.appendChild(toggleRow("Vibrazione",function(){return st.vibrate;},function(v){ st.vibrate=v; }));
+  sBody.appendChild(toggleRow("Vibrazione (il browser chiede il permesso 1 volta)",function(){return st.vibrate;},function(v){ st.vibrate=v; if(v){ try{ navigator.vibrate&&navigator.vibrate(20); }catch(e){} } }));
   sBody.appendChild(toggleRow("Suoni (dado, campanello turno)",function(){return st.sound;},function(v){ st.sound=v; if(v){ audio(); sfx("tick"); } }));
 
   g(sBody,"Preset di partenza");
