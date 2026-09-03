@@ -63,12 +63,13 @@
   .dnum.leth{color:#ff5252;}
 
   /* global controls — board dead-centre, never overlaps quad content (which sits at each quad's outer edge) */
-  #center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:4px;background:#000;border:1px solid #2a2a2a;border-radius:13px;padding:9px;box-shadow:0 4px 16px rgba(0,0,0,.6);width:172px;}
+  #center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:4px;background:#000;border:1px solid #2a2a2a;border-radius:13px;padding:9px;box-shadow:0 4px 16px rgba(0,0,0,.6);width:200px;}
   #center .clk{font-family:var(--pix);font-size:16px;color:#fff;letter-spacing:.03em;text-align:center;}
   #center .turnclk{font-family:var(--pix);font-size:11px;color:#9aa;text-align:center;letter-spacing:.02em;}
   #center #cTurn{width:100%;}
   #center .row{display:flex;gap:3px;}
-  #center button{flex:1;font-family:var(--pix);font-size:9px;color:#e8e8e8;background:#1a1a1a;border:1px solid #555;border-radius:7px;padding:9px 2px;}
+  #center button{flex:1;font-family:var(--pix);font-size:8px;color:#e8e8e8;background:#1a1a1a;border:1px solid #555;border-radius:7px;padding:9px 2px;display:flex;align-items:center;justify-content:center;min-height:30px;}
+  #center button svg{width:13px;height:13px;}
   #center button:active{background:#333;}
 
   #chrome{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);z-index:25;display:none;gap:5px;transition:opacity .35s;justify-content:center;}
@@ -146,10 +147,10 @@
     <button id="cDice">DADI</button>
     <button id="cStats">STATS</button>
     <button id="cUndo">&#8630;</button>
+    <button id="cFs" title="Schermo intero"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v2H5v5H3V3zm11 0h7v7h-2V5h-5V3zM3 14h2v5h5v2H3v-7zm16 0h2v7h-7v-2h5v-5z"/></svg></button>
     <button id="cMenu">&#8942;</button>
   </div>
 </div>
-<button id="cFs" style="position:absolute;left:-999px">SCHERMO</button>
 
 <div class="sheet" id="pSheet"><div class="hd"><h2 id="pTitle"></h2><button id="pClose">Chiudi</button></div><div class="bd" id="pBody"></div></div>
 <div class="sheet" id="sSheet"><div class="hd"><h2>Impostazioni</h2><button id="sClose">Chiudi</button></div><div class="bd" id="sBody"></div></div>
@@ -1068,12 +1069,18 @@ document.getElementById("cTurn").addEventListener("click",function(){
 function isFs(){ return document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement; }
 function goFs(){ var el=document.documentElement; var fn=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen; if(fn){ try{ fn.call(el); }catch(e){} } }
 function exitFs(){ var ex=document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen; if(ex){ try{ ex.call(document); }catch(e){} } }
-document.getElementById("cFs").addEventListener("click",function(){ if(isFs()) exitFs(); else goFs(); });
-var fsTried=false;
+var userExitedFs=false;
+function fsChange(){ if(!isFs()) userExitedFs=true; else userExitedFs=false; }
+document.addEventListener("fullscreenchange",fsChange);
+document.addEventListener("webkitfullscreenchange",fsChange);
+document.addEventListener("mozfullscreenchange",fsChange);
+document.getElementById("cFs").addEventListener("click",function(){
+  if(isFs()){ userExitedFs=true; exitFs(); }
+  else { userExitedFs=false; goFs(); }
+});
 document.addEventListener("touchend",function(){
   audio();
-  if(fsTried) return; fsTried=true;
-  if(!isFs()) goFs();
+  if(!isFs() && !userExitedFs) goFs();
 },true);
 
 var tEl=document.getElementById("toast"),tT=null;
