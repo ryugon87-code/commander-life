@@ -43,6 +43,7 @@
   .pills{position:absolute;left:6%;right:6%;top:67%;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;z-index:4;pointer-events:none;}
   .pill{min-width:26px;height:24px;padding:0 8px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;font-family:var(--pix);font-size:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.3);}
   .pill.hot{background:#c62828;border-color:#ff8a80;}
+  .pill.mana{color:#111;border-color:rgba(0,0,0,.3);}
 
   .qbot{position:absolute;left:5%;right:5%;bottom:3%;display:flex;gap:4px;justify-content:center;align-items:flex-end;flex-wrap:wrap;z-index:8;}
   .qb{font-family:var(--pix);font-size:10px;color:rgba(255,255,255,.92);background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 8px;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:4px;white-space:nowrap;}
@@ -68,6 +69,7 @@
   /* global controls — board dead-centre, never overlaps quad content (which sits at each quad's outer edge) */
   #center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:4px;background:#000;border:1px solid #2a2a2a;border-radius:13px;padding:9px;box-shadow:0 4px 16px rgba(0,0,0,.6);width:200px;}
   #center .clk{font-family:var(--pix);font-size:16px;color:#fff;letter-spacing:.03em;text-align:center;}
+  #center .clk.paused{color:#777;}
   #center .turnclk{font-family:var(--pix);font-size:11px;color:#9aa;text-align:center;letter-spacing:.02em;}
   #center #cTurn{width:100%;}
   #center .row{display:flex;gap:3px;}
@@ -75,11 +77,6 @@
   #center button svg{width:13px;height:13px;}
   #center button:active{background:#333;}
 
-  #chrome{position:absolute;left:50%;bottom:3px;transform:translateX(-50%);z-index:25;display:none;gap:5px;transition:opacity .35s;justify-content:center;}
-  #chrome.hide{opacity:0;pointer-events:none;}
-  #chrome button{background:rgba(0,0,0,.78);border:1px solid #555;border-radius:12px;color:#e8e8e8;font-family:var(--pix);font-size:8px;letter-spacing:0;padding:8px 8px;}
-  #chrome button:active{background:#333;}
-  #showChrome{position:absolute;left:50%;bottom:0;transform:translateX(-50%);width:180px;height:30px;z-index:24;}
 
   .sheet{position:absolute;inset:0;background:rgba(0,0,0,.95);z-index:50;display:none;flex-direction:column;}
   .sheet.on{display:flex;}
@@ -294,16 +291,18 @@ var PINWHEEL4={cols:2,rows:2,rot:[90,180,0,270],corner:["br","bl","tr","tl"]};
 
 /* card art catalogue — provided by art/cards.js (window.__CARDS) */
 var CARDS=(window.__CARDS||[]);
-var LOCAL=(location.protocol==="file:");
-function cardSrc(c){ return (LOCAL && c.file) ? c.file : (c.url || c.file); }
-function loadCards(){ return Promise.resolve(); }
+function cardSrc(c){ return c.url || c.arturl || c.file; }
 
 var st;
 try{ st=JSON.parse(localStorage.getItem(LS)||"null"); }catch(e){ st=null; }
-if(!st) st=fresh(4,40);
-function newSeat(i,life){ return {name:"Giocatore "+(i+1),color:COLORS[i%6],bg:{type:"solid"},life:life,counters:{},custom:[],cmdrs:[{name:"Comandante",art:null}],cmdDmg:{},rot:null,hist:[]}; }
-function fresh(n,life){ var s={n:n,start:life,active:0,monarch:-1,turnMode:false,vibrate:false,sound:true,layout:"grid",presets:[],match:{elapsed:0,turnElapsed:0,running:false},p:[]}; for(var i=0;i<6;i++) s.p.push(newSeat(i,life)); return s; }
+function newSeat(i,life){ return {name:"Giocatore "+(i+1),color:COLORS[i%6],bg:{type:"solid"},life:life,counters:{},custom:[],mana:{},cmdrs:[{name:"Comandante",art:null}],cmdDmg:{},rot:null,hist:[]}; }
+function fresh(n,life){ var s={n:n,start:life,active:0,turn:1,monarch:-1,turnMode:false,vibrate:false,sound:true,wakeLock:true,layout:"grid",presets:[],match:{elapsed:0,turnElapsed:0,running:false},p:[]}; for(var i=0;i<6;i++) s.p.push(newSeat(i,life)); return s; }
+function migrate(st){
+if(!st||typeof st!=="object") st=fresh(4,40);
+if(!LAYOUTS[st.n]) st.n=4;
+if(!(st.start>0)) st.start=40;
 if(!st.p||st.p.length<6){ st.p=st.p||[]; for(var _i=st.p.length;_i<6;_i++) st.p.push(newSeat(_i,st.start||40)); }
+if(st.wakeLock===undefined) st.wakeLock=true;
 if(st.monarch===undefined) st.monarch=-1;
 if(st.turnMode===undefined) st.turnMode=false;
 if(st.vibrate===undefined) st.vibrate=false;
@@ -312,25 +311,35 @@ if(st.sound===undefined) st.sound=true;
 if(!st.layout) st.layout="grid";
 if(!st.presets) st.presets=[];
 if(!st.match) st.match={elapsed:0,turnElapsed:0,running:false};
+if(!st.turn) st.turn=1;
+if(!(st.active>=0 && st.active<st.n)) st.active=0;
+if(st.monarch>=st.n) st.monarch=-1;
 st.p.forEach(function(p,pi){
   if(!p.hist) p.hist=[];
+  if(!p.counters) p.counters={};
+  if(!p.custom) p.custom=[];
+  if(!p.mana) p.mana={};
+  if(!p.bg) p.bg={type:"solid"};
   if(!p.cmdrs) p.cmdrs=[{name:"Comandante",art:null}];
   if(!p.cmdDmg){
     p.cmdDmg={};
     if(p.cmd){ for(var oi in p.cmd){ if(p.cmd[oi]) p.cmdDmg[oi+"|0"]=p.cmd[oi]; } } // migrate old model
   }
 });
+return st;
+}
+st=migrate(st);
 function save(){ try{ localStorage.setItem(LS,JSON.stringify(st)); }catch(e){} }
 var lastSave=0;
 function saveSoft(){ var n=Date.now(); if(n-lastSave>4000){ lastSave=n; save(); } }
 
 /* ---------- undo ---------- */
 var undoStack=[];
-function snap(){ undoStack.push(JSON.stringify({p:st.p,monarch:st.monarch,active:st.active})); if(undoStack.length>60) undoStack.shift(); }
+function snap(){ undoStack.push(JSON.stringify({p:st.p,monarch:st.monarch,active:st.active,turn:st.turn})); if(undoStack.length>60) undoStack.shift(); }
 function undo(){
   if(!undoStack.length){ toast("Niente da annullare"); return; }
   var s=JSON.parse(undoStack.pop());
-  st.p=s.p; st.monarch=s.monarch; st.active=s.active;
+  st.p=s.p; st.monarch=s.monarch; st.active=s.active; if(s.turn) st.turn=s.turn;
   save(); build(); toast("Annullato");
 }
 function vib(ms){ if(st.vibrate && navigator.vibrate){ try{ navigator.vibrate(ms); }catch(e){} } }
@@ -385,13 +394,17 @@ function build(){
   grid.style.gridTemplateColumns="repeat("+cols+",1fr)";
   grid.style.gridTemplateRows="repeat("+rows+",1fr)";
   grid.innerHTML="";
-  for(var i=0;i<st.n;i++) grid.appendChild(makeQ(i,L));
+  for(var i=0;i<st.n;i++){
+    var q=makeQ(i,L);
+    if(i===st.n-1 && cols===2 && st.n%2===1) q.style.gridColumn="span 2";  /* last seat takes the empty cell */
+    grid.appendChild(q);
+  }
   document.getElementById("cTurn").style.display=st.turnMode?"":"none";
   renderClock();
 }
 function effRot(i,L){ return (st.p[i].rot!=null)? st.p[i].rot : L.rot[i]; }
 
-function fitLife(q,life,rc){
+function fitLife(life,rc){
   // choose a life font size that fits the quad
   var big = rc==="rot90"||rc==="rot270";
   life.style.fontFamily="var(--pix)";
@@ -403,12 +416,7 @@ function fitLife(q,life,rc){
 function makeQ(i,L){
   var pl=st.p[i], rot=effRot(i,L);
   var q=document.createElement("div");
-  q.className="q"; q.setAttribute("data-corner",L.corner[i]);
-  var col=i%L.cols, row=Math.floor(i/L.cols), inner;
-  if(L.cols===1) inner=(row===0?"b":"t");
-  else inner=(col < L.cols/2 ? "r":"l");
-  q.setAttribute("data-inner",inner);
-  q.setAttribute("data-vpos", row===0 ? "hi" : "lo");
+  q.className="q";
   if(st.turnMode && st.active===i) q.className+=" active";
 
   var bg=document.createElement("div"); bg.className="bg";
@@ -429,7 +437,7 @@ function makeQ(i,L){
   var fr=document.createElement("div"); fr.className="frame";
   if(rot) fr.style.transform="rotate("+rot+"deg)";
 
-  var life=document.createElement("div"); life.className="life"; life.textContent=pl.life; fitLife(q,life,rc);
+  var life=document.createElement("div"); life.className="life"; life.textContent=pl.life; fitLife(life,rc);
   var delta=document.createElement("div"); delta.className="delta"; delta.style.fontFamily="var(--pix)"; delta.style.fontSize="4vh";
   var out=document.createElement("div"); out.className="out"; out.textContent="OUT"; out.style.fontFamily="var(--pix)"; out.style.fontSize="7vh";
   var pills=document.createElement("div"); pills.className="pills";
@@ -475,13 +483,14 @@ function makeQ(i,L){
     var poison=pl.counters.poison||0;
     CATALOG.forEach(function(c){ if(c.k==="tax") return; var v=pl.counters[c.k]||0; if(v!==0) pill(pills,c.tag+" "+v, c.lethal&&v>=c.lethal); });
     (pl.custom||[]).forEach(function(cu){ if(cu.value!==0) pill(pills, cu.name.toUpperCase()+" "+cu.value,false); });
+    MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v>0){ var d=pill(pills,m[0]+" "+v,false); d.className+=" mana"; d.style.background=m[2]; } });
     // (commander damage is shown on the DANNO corner button)
     q.className=q.className.replace(" dead","");
     if(isDead(pl)) q.className+=" dead";
   }
   function bump(n){
     if(!dirty){ snap(); dirty=true; setTimeout(function(){ dirty=false; },900); }
-    if(!st.match.running){ st.match.running=true; }
+    if(!st.match.running && !st.match.paused){ st.match.running=true; }
     pl.life+=n; acc+=n; vib(12); sfx("tick");
     delta.textContent=(acc>0?"+":"")+acc; delta.className="delta show";
     if(at)clearTimeout(at); at=setTimeout(function(){ delta.className="delta"; acc=0; },1200);
@@ -492,7 +501,7 @@ function makeQ(i,L){
   q._render=render; render();
   return q;
 }
-function pill(box,txt,hot){ var d=document.createElement("div"); d.className="pill"+(hot?" hot":""); d.textContent=txt; d.style.fontFamily="var(--pix)"; d.style.fontSize="1.35vh"; box.appendChild(d); }
+function pill(box,txt,hot){ var d=document.createElement("div"); d.className="pill"+(hot?" hot":""); d.textContent=txt; d.style.fontFamily="var(--pix)"; d.style.fontSize="1.35vh"; box.appendChild(d); return d; }
 
 // mini seat-map: a grid matching the on-screen quad layout, the source player's cell lit
 function seatPip(oppIdx,lethal){
@@ -511,7 +520,7 @@ function dannoBtn(i){
   var pl=st.p[i];
   var b=document.createElement("div"); b.className="qb qb-danno";
   b.addEventListener("click",function(e){ e.stopPropagation(); openCmdDmg(i); });
-  var lab=document.createElement("span"); lab.className="ql"; lab.textContent="DANNO"; b.appendChild(lab);
+  var lab=document.createElement("span"); lab.textContent="DANNO"; b.appendChild(lab);
   var byOpp={};
   for(var k in pl.cmdDmg){ var a=pl.cmdDmg[k]; if(a>0){ var p=k.split("|"); (byOpp[p[0]]=byOpp[p[0]]||{})[p[1]]=a; } }
   var keys=Object.keys(byOpp).sort(function(x,y){return x-y;});
@@ -555,11 +564,6 @@ function tapRepeat(el,fn){
   el.addEventListener("mousedown",function(e){ if(touchMode) return; begin(e.clientX,e.clientY); });
   window.addEventListener("mouseup",function(){ if(!touchMode) end(); });
 }
-function hold(el,fn){ var t=null;
-  function s(){ t=setTimeout(fn,550); } function c(){ if(t){clearTimeout(t);t=null;} }
-  el.addEventListener("touchstart",s,{passive:true}); el.addEventListener("touchend",c); el.addEventListener("touchmove",c);
-  el.addEventListener("mousedown",s); el.addEventListener("mouseup",c);
-}
 function rerender(){ for(var i=0;i<grid.children.length;i++) if(grid.children[i]._render) grid.children[i]._render(); }
 
 /* ---------- clock ---------- */
@@ -567,15 +571,21 @@ var clockEl=document.getElementById("clk"), turnClkEl=document.getElementById("t
 function fmt(s){ s=Math.max(0,Math.round(s)); var m=Math.floor(s/60); return m+":"+("0"+(s%60)).slice(-2); }
 function renderClock(){
   clockEl.textContent = fmt(st.match.elapsed);
+  clockEl.className = "clk"+(st.match.paused?" paused":"");
   var on=!!st.turnMode;
   turnClkEl.style.display = on ? "" : "none";
   turnBtn.style.display = on ? "" : "none";
-  if(on) turnClkEl.textContent = "turno "+fmt(st.match.turnElapsed);
+  if(on) turnClkEl.textContent = "T"+(st.turn||1)+" · "+fmt(st.match.turnElapsed);
 }
 clockEl.addEventListener("click",openStats);
+var lastTick=Date.now();
 setInterval(function(){
-  if(st.match.running){ st.match.elapsed++; if(st.turnMode) st.match.turnElapsed++; renderClock(); saveSoft(); }
-},1000);
+  var now=Date.now(), dt=Math.round((now-lastTick)/1000);
+  if(dt<1) return;
+  lastTick+=dt*1000;
+  if(dt>6*3600) dt=1;  /* device slept for hours: don't count it */
+  if(st.match.running && !st.match.paused){ st.match.elapsed+=dt; if(st.turnMode) st.match.turnElapsed+=dt; renderClock(); saveSoft(); }
+},500);
 
 /* ---------- player sheet ---------- */
 var pSheet=document.getElementById("pSheet"), pTitle=document.getElementById("pTitle"), pBody=document.getElementById("pBody");
@@ -719,7 +729,7 @@ function openPlayer(i){
   var pickCardBg=document.createElement("div"); pickCardBg.className="btn"; pickCardBg.textContent="Sfondo da carta Commander";
   pickCardBg.addEventListener("click",function(){ pickCard(function(card){
     pl.bg={type:"card",file:card.file,url:card.url,name:card.name};
-    if(pl.cmdrs && pl.cmdrs[0] && (!pl.cmdrs[0].name || pl.cmdrs[0].name==="Comandante" || pl.cmdrs[0].name.indexOf("Comandante")===0)){ pl.cmdrs[0].name=card.name; pl.cmdrs[0].art=card.file; }
+    if(pl.cmdrs && pl.cmdrs[0] && (!pl.cmdrs[0].name || pl.cmdrs[0].name==="Comandante" || pl.cmdrs[0].name.indexOf("Comandante")===0)){ pl.cmdrs[0].name=card.name; pl.cmdrs[0].art=card.file; pl.cmdrs[0].arturl=card.url; }
     save(); openPlayer(i);
   }); });
   pBody.appendChild(pickCardBg);
@@ -745,7 +755,7 @@ function openPlayer(i){
 
   g(pBody,"");
   var resetP=document.createElement("div"); resetP.className="btn danger"; resetP.textContent="Azzera questo giocatore";
-  resetP.addEventListener("click",function(){ if(confirm("Azzerare "+pl.name+"?")){ snap(); pl.life=st.start; pl.counters={}; pl.custom=[]; pl.cmdDmg={}; pl.hist=[]; save(); openPlayer(i); } });
+  resetP.addEventListener("click",function(){ if(confirm("Azzerare "+pl.name+"?")){ snap(); pl.life=st.start; pl.counters={}; pl.custom=[]; pl.mana={}; pl.cmdDmg={}; pl.hist=[]; save(); openPlayer(i); } });
   pBody.appendChild(resetP);
   pSheet.className="sheet on";
 }
@@ -760,12 +770,12 @@ function openSettings(){
   g(sBody,"Numero giocatori");
   var pc=document.createElement("div"); pc.className="chips";
   [2,3,4,5,6].forEach(function(n){ var c=document.createElement("div"); c.className="chip"+(st.n===n?" sel":""); c.textContent=n;
-    c.addEventListener("click",function(){ st.n=n; save(); build(); openSettings(); }); pc.appendChild(c); });
+    c.addEventListener("click",function(){ st.n=n; if(st.active>=n) st.active=0; if(st.monarch>=n) st.monarch=-1; save(); build(); openSettings(); }); pc.appendChild(c); });
   sBody.appendChild(pc);
 
   g(sBody,"Disposizione");
   var ly=document.createElement("div"); ly.className="chips";
-  [["Griglia 2x2","grid"],["Girandola (4 giocatori)","pinwheel"]].forEach(function(o){
+  [["Griglia","grid"],["Girandola (4 giocatori)","pinwheel"]].forEach(function(o){
     var c=document.createElement("div"); c.className="chip"+((st.layout===o[1])?" sel":""); c.textContent=o[0];
     c.addEventListener("click",function(){ st.layout=o[1]; save(); build(); openSettings(); }); ly.appendChild(c);
   });
@@ -783,6 +793,7 @@ function openSettings(){
   sBody.appendChild(toggleRow("Indicatore di turno + tasto TURNO",function(){return st.turnMode;},function(v){ st.turnMode=v; }));
   sBody.appendChild(toggleRow("Vibrazione (il browser chiede il permesso 1 volta)",function(){return st.vibrate;},function(v){ st.vibrate=v; if(v){ try{ navigator.vibrate&&navigator.vibrate(20); }catch(e){} } }));
   sBody.appendChild(toggleRow("Suoni (dado, campanello turno)",function(){return st.sound;},function(v){ st.sound=v; if(v){ audio(); sfx("tick"); } }));
+  sBody.appendChild(toggleRow("Schermo sempre acceso",function(){return st.wakeLock;},function(v){ st.wakeLock=v; wake(); }));
 
   g(sBody,"Preset di partenza");
   (st.presets||[]).forEach(function(pr,idx){
@@ -800,8 +811,11 @@ function openSettings(){
 
   g(sBody,"Partita");
   var who=document.createElement("div"); who.className="btn"; who.textContent="Chi inizia? (a caso)";
-  who.addEventListener("click",function(){ var r=Math.floor(Math.random()*st.n); st.active=r; save(); build(); sSheet.className="sheet"; toast("Inizia: "+st.p[r].name); vib([20,60,20]); sfx("bell"); });
+  who.addEventListener("click",function(){ var r=Math.floor(Math.random()*st.n); st.active=r; st.turn=1; st.match.turnElapsed=0; save(); build(); sSheet.className="sheet"; toast("Inizia: "+st.p[r].name); vib([20,60,20]); sfx("bell"); });
   sBody.appendChild(who);
+  var pz=document.createElement("div"); pz.className="btn"; pz.textContent=st.match.paused?"Riprendi il tempo":"Pausa il tempo";
+  pz.addEventListener("click",function(){ st.match.paused=!st.match.paused; if(!st.match.paused) st.match.running=true; save(); renderClock(); openSettings(); });
+  sBody.appendChild(pz);
   var nb=document.createElement("div"); nb.className="btn"; nb.textContent="Nuova partita (tutti a "+st.start+")";
   nb.addEventListener("click",function(){ if(confirm("Nuova partita?")){ newGame(); sSheet.className="sheet"; toast("Nuova partita"); } });
   sBody.appendChild(nb);
@@ -819,7 +833,7 @@ function openSettings(){
 
   g(sBody,"Come si usa");
   var tip=document.createElement("div"); tip.className="tip";
-  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; Ingranaggio = contatori, danno comandante, sfondo, colore, rotazione<br>&bull; Corona = Monarch &nbsp;|&nbsp; Dado al centro: tap = d20, premuto = nuova partita<br>&bull; Orologio in alto = tempo partita, tap per le statistiche<br>&bull; Barra in basso: ANNULLA / TURNO / DADI / STATS / MENU / SCHERMO (sparisce da sola)";
+  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; Nome / ingranaggio = contatori, danno comandante, sfondo, colore, rotazione<br>&bull; Corona = Monarch &nbsp;|&nbsp; DANNO / TASSA / SEGN. / MANA = pannelli rapidi<br>&bull; Pannello centrale: orologio (tap = statistiche), TURNO, DADI, STATS, &#8630; annulla, schermo intero, &#8942; menu<br>&bull; Il tempo parte al primo tocco di vita; si mette in pausa da Menu &rarr; Partita";
   sBody.appendChild(tip);
   sSheet.className="sheet on";
 }
@@ -833,8 +847,8 @@ function toggleRow(label,get,set){
 }
 function newGame(){
   snap();
-  st.p.forEach(function(p){ p.life=st.start; p.counters={}; p.custom=[]; p.cmdDmg={}; p.hist=[{t:0,l:st.start}]; });
-  st.monarch=-1; st.match={elapsed:0,turnElapsed:0,running:false};
+  st.p.forEach(function(p){ p.life=st.start; p.counters={}; p.custom=[]; p.mana={}; p.cmdDmg={}; p.hist=[{t:0,l:st.start}]; });
+  st.monarch=-1; st.turn=1; st.match={elapsed:0,turnElapsed:0,running:false};
   save(); build(); renderClock();
 }
 
@@ -861,12 +875,12 @@ function loadPreset(idx){
     if(s<pr.seats.length){
       var sd=pr.seats[s], pl=st.p[s];
       pl.name=sd.name; pl.color=sd.color; pl.bg=JSON.parse(JSON.stringify(sd.bg)); pl.rot=sd.rot;
-      pl.life=st.start; pl.counters={}; pl.custom=[]; pl.cmdDmg={}; pl.hist=[{t:0,l:st.start}];
+      pl.life=st.start; pl.counters={}; pl.custom=[]; pl.mana={}; pl.cmdDmg={}; pl.hist=[{t:0,l:st.start}];
       if(sd.bg.type==="img"){ chain=chain.then(function(){ return idbGet("preset_"+idx+"_"+s).then(function(d){ if(d){ idbSet("p"+s,d); bgCache[s]=d; } }); }); }
       else { idbDel("p"+s); }
     }
   })(s); }
-  st.monarch=-1; st.match={elapsed:0,turnElapsed:0,running:false};
+  st.monarch=-1; st.active=0; st.turn=1; st.match={elapsed:0,turnElapsed:0,running:false};
   chain.then(function(){ save(); build(); });
 }
 
@@ -891,9 +905,10 @@ importPick.addEventListener("change",function(){
   fr.onload=function(){
     try{
       var o=JSON.parse(fr.result);
-      if(o.state){ st=o.state; save(); }
-      if(o.images){ for(var k in o.images){ idbSet(k,o.images[k]); } bgCache={}; }
-      undoStack=[]; sSheet.className="sheet"; setTimeout(build,250); toast("Importato");
+      if(!o || !o.state || !o.state.p){ toast("File non valido"); return; }
+      st=migrate(o.state); save();
+      if(o.images){ for(var k in o.images){ idbSet(k,o.images[k]); } }
+      bgCache={}; undoStack=[]; sSheet.className="sheet"; setTimeout(build,250); toast("Importato");
     }catch(e){ toast("File non valido"); }
   };
   fr.readAsText(f);
@@ -989,7 +1004,7 @@ function renderCards(q){
   var scored=[];
   CARDS.forEach(function(c){ var sc=fuzzyScore(c.name,q); if(sc>0) scored.push({c:c,s:sc}); });
   scored.sort(function(a,b){ return b.s-a.s || a.c.name.localeCompare(b.c.name); });
-  if(!scored.length){ cardGrid.innerHTML='<div style="color:#888;font-size:14px;grid-column:1/-1">Nessun suggerimento per "'+q+'".</div>'; return; }
+  if(!scored.length){ var nf=document.createElement("div"); nf.style.cssText="color:#888;font-size:14px;grid-column:1/-1"; nf.textContent='Nessun suggerimento per "'+q+'".'; cardGrid.appendChild(nf); return; }
   var mkIO = ("IntersectionObserver" in window);
   if(mkIO) cio=new IntersectionObserver(function(ents){ ents.forEach(function(en){ if(en.isIntersecting){ var t=en.target; t.style.backgroundImage="url("+t.getAttribute("data-src")+")"; cio.unobserve(t); } }); },{root:cardGrid.parentNode,rootMargin:"250px"});
   scored.slice(0,80).forEach(function(o){
@@ -1099,15 +1114,17 @@ function openStats(){
   }
   document.getElementById("stTime").textContent="Tempo: "+fmt(st.match.elapsed);
   document.getElementById("stWho").textContent = aliveCount===1 ? ("Vince "+st.p[winner].name+"!") : (aliveCount===0?"Tutti eliminati":"In gioco: "+aliveCount);
-  if(aliveCount===1) sfx("win");
+  if(aliveCount===1 && !st.match.winPlayed){ st.match.winPlayed=true; save(); sfx("win"); }
   statsSheet.className="sheet on";
 }
 
 /* ---------- centre controls ---------- */
-function showChrome(){}
 document.getElementById("cUndo").addEventListener("click",undo);
 document.getElementById("cTurn").addEventListener("click",function(){
-  st.active=nextSeatCW(st.active); st.match.turnElapsed=0; save(); build(); sfx("bell"); vib(30);
+  snap();
+  var nx=st.active, guard=0;
+  do{ nx=nextSeatCW(nx); guard++; }while(isDead(st.p[nx]) && guard<st.n);  /* skip eliminated players */
+  st.active=nx; st.turn=(st.turn||1)+1; st.match.turnElapsed=0; save(); build(); sfx("bell"); vib(30);
 });
 
 /* ---------- fullscreen ---------- */
@@ -1124,7 +1141,7 @@ document.getElementById("cFs").addEventListener("click",function(){
   else { userExitedFs=false; goFs(); }
 });
 document.addEventListener("touchend",function(){
-  audio();
+  audio(); wake();
   if(!isFs() && !userExitedFs) goFs();
 },true);
 
@@ -1138,7 +1155,7 @@ window.addEventListener("resize",function(){ if(rez)clearTimeout(rez); rez=setTi
 try{ history.pushState({k:1},""); }catch(e){}
 window.addEventListener("popstate",function(){
   var open=document.querySelector(".sheet.on");
-  if(open) open.className="sheet"; else showChrome();
+  if(open){ if(open.id==="cam") stopCam(); open.className="sheet"; }
   try{ history.pushState({k:1},""); }catch(e){}
 });
 
@@ -1147,8 +1164,19 @@ if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
   navigator.serviceWorker.register("sw.js").catch(function(){});
 }
 
+/* keep the screen on during a game (Screen Wake Lock API, https only) */
+var wl=null;
+function wake(){
+  if(!st.wakeLock){ if(wl){ try{ wl.release(); }catch(e){} wl=null; } return; }
+  if(wl || !navigator.wakeLock || document.visibilityState!=="visible") return;
+  navigator.wakeLock.request("screen").then(function(l){ wl=l; l.addEventListener("release",function(){ wl=null; }); }).catch(function(){});
+}
+document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") wake(); else save(); });
+document.addEventListener("click",wake,true);
+window.addEventListener("pagehide",save);
 window.addEventListener("beforeunload",save);
-Promise.all([openIDB(),loadCards()]).then(build);
+wake();
+openIDB().then(build);
 })();
 </script>
 </body>

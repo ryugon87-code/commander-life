@@ -1,9 +1,11 @@
 /* Simple offline cache — only active when the page is served over http(s) */
-var CACHE = "commander-life-v5";
+var CACHE = "commander-life-v6";
 var ASSETS = [
   "./",
   "./index.html",
   "./manifest.webmanifest",
+  "./pixfont.css",
+  "./art/cards.js",
   "./icon-192.png",
   "./icon-512.png"
 ];
@@ -23,7 +25,10 @@ self.addEventListener("fetch", function(e){
         var copy = res.clone();
         caches.open(CACHE).then(function(c){ c.put(e.request, copy); });
         return res;
-      }).catch(function(){ return caches.match("./index.html"); });
+      }).catch(function(){
+        if(e.request.mode==="navigate") return caches.match("./index.html");
+        return Response.error();
+      });
     })
   );
 });
