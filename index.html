@@ -26,6 +26,7 @@
   .q.hasimg .scrim{background:rgba(0,0,0,.34);}
   .q.dead .frame>:not(.mpanel){filter:grayscale(1) brightness(.42);}
   .q.dead .out{display:flex;}
+  .q.risk .life{color:#ff5252;}
   .q.active{box-shadow:inset 0 0 0 5px #ffd54a,0 0 22px rgba(255,213,74,.5);}
 
   /* one rotated frame per quad — all children in the player's own coordinate system */
@@ -376,8 +377,10 @@ function vib(ms){ if(st.vibrate && navigator.vibrate){ try{ navigator.vibrate(ms
 
 /* ---------- helpers ---------- */
 function maxCmdDmg(pl){ var m=0; for(var k in pl.cmdDmg){ if(pl.cmdDmg[k]>m) m=pl.cmdDmg[k]; } return m; }
-/* 10 poison is only flagged (red), never an automatic OUT: some effects keep a player alive */
-function isDead(pl){ return pl.life<=0 || maxCmdDmg(pl)>=21; }
+/* OUT is set by hand from the player sheet: 0 life, 21 commander damage and 10 poison are only
+   flagged in red, because some effects keep a player alive */
+function isDead(pl){ return !!pl.out; }
+function atRisk(pl){ return pl.life<=0 || maxCmdDmg(pl)>=21 || (pl.counters.poison||0)>=10; }
 function setCmdrCount(pi,count){
   snap();
   var opp=st.p[pi];
@@ -556,8 +559,9 @@ function makeQ(i,L){
     var segN=pills.children.length;
     badge(manaBtn,"MANA",manaTotal(pl)); badge(taxBtn,"TASSA",pl.counters.tax||0); badge(segBtn,"SEGNALINI",segN);
     // (commander damage is shown on the DANNO corner button)
-    q.className=q.className.replace(" dead","");
+    q.className=q.className.replace(" dead","").replace(" risk","");
     if(isDead(pl)) q.className+=" dead";
+    else if(pl.life<=0) q.className+=" risk";
   }
   function bump(n){
     if(!dirty){ snap(); dirty=true; setTimeout(function(){ dirty=false; },900); }
@@ -835,6 +839,15 @@ function openPlayer(i){
   var pl=st.p[i];
   pTitle.textContent=pl.name; pBody.innerHTML="";
 
+  g(pBody,"In partita");
+  var outB=document.createElement("div"); outB.className="btn"+(pl.out?"":" danger");
+  outB.textContent=pl.out?"Rimetti in gioco":"OUT – eliminato";
+  if(!pl.out && atRisk(pl)){ var why=document.createElement("div"); why.className="tip";
+    why.textContent=(pl.life<=0?"Vita a "+pl.life+". ":"")+(maxCmdDmg(pl)>=21?"21 danni da un comandante. ":"")+((pl.counters.poison||0)>=10?"10 segnalini veleno. ":"")+"Se nessun effetto lo tiene in gioco, segnalo OUT.";
+    pBody.appendChild(why); }
+  outB.addEventListener("click",function(){ snap(); pl.out=!pl.out; save(); build(); openPlayer(i); toast(pl.name+(pl.out?" è OUT":" rientra in gioco")); });
+  pBody.appendChild(outB);
+
   g(pBody,"Nome");
   var nameRow=document.createElement("div"); nameRow.className="orow";
   var ni=document.createElement("input"); ni.type="text"; ni.value=pl.name;
@@ -965,7 +978,7 @@ function openSettings(){
 
   g(sBody,"Come si usa");
   var tip=document.createElement("div"); tip.className="tip";
-  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; DANNO / TASSA / SEGNALINI / MANA = pannello del giocatore al centro, girato verso di lui (tocca il gettone = +1)<br>&bull; Nome / ingranaggio = personalizza: nome, colore e sfondo, comandanti, rotazione<br>&bull; Corona = Monarch<br>&bull; Pannello centrale: orologio (tap = pausa / riprendi), TURNO, DADI, &#8630; annulla, schermo intero, &#8942; menu";
+  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; DANNO / TASSA / SEGNALINI / MANA = pannello del giocatore al centro, girato verso di lui (tocca il gettone = +1)<br>&bull; Nome / ingranaggio = tasto OUT e personalizzazione: nome, colore e sfondo, comandanti, rotazione<br>&bull; Corona = Monarch<br>&bull; Pannello centrale: orologio (tap = pausa / riprendi), TURNO, DADI, &#8630; annulla, schermo intero, &#8942; menu";
   sBody.appendChild(tip);
   var legal=document.createElement("div"); legal.className="tip"; legal.style.fontSize="9px"; legal.style.color="#888";
   legal.innerHTML="&copy; 2026 ryugon87-code &mdash; Commander Life. Tutti i diritti riservati.<br>"+
@@ -985,7 +998,7 @@ function toggleRow(label,get,set){
 }
 function newGame(){
   snap();
-  st.p.forEach(function(p){ p.life=st.start; p.counters={}; p.custom=[]; p.mana={}; p.cmdDmg={}; });
+  st.p.forEach(function(p){ p.life=st.start; p.counters={}; p.custom=[]; p.mana={}; p.cmdDmg={}; p.out=false; });
   st.monarch=-1; st.turn=1; st.match={elapsed:0,turnElapsed:0,running:false};
   save(); build(); renderClock();
 }
@@ -1013,7 +1026,7 @@ function loadPreset(idx){
     if(s<pr.seats.length){
       var sd=pr.seats[s], pl=st.p[s];
       pl.name=sd.name; pl.color=sd.color; pl.bg=JSON.parse(JSON.stringify(sd.bg)); pl.rot=sd.rot;
-      pl.life=st.start; pl.counters={}; pl.custom=[]; pl.mana={}; pl.cmdDmg={};
+      pl.life=st.start; pl.counters={}; pl.custom=[]; pl.mana={}; pl.cmdDmg={}; pl.out=false;
       if(sd.bg.type==="img"||sd.bg.cached){ chain=chain.then(function(){ return idbGet("preset_"+idx+"_"+s).then(function(d){ if(d){ idbSet("p"+s,d); bgCache[s]=d; } }); }); }
       else { idbDel("p"+s); }
     }
