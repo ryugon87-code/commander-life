@@ -54,13 +54,13 @@
   .qb .mtot{background:#ffd54a;color:#222;border-radius:6px;padding:1px 4px;}
   /* in-quad mana panel: lives inside the rotated frame, so it faces its player */
   .mpanel{position:absolute;inset:0;z-index:20;background:rgba(6,6,8,.9);display:flex;flex-direction:column;container-type:size;padding:2.5cqh 2cqw;gap:2cqh;}
-  .mph{display:flex;align-items:center;gap:2cqw;height:14cqh;flex:none;}
-  .mph span{flex:1;min-width:0;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:clamp(9px,7cqh,15px);color:#fff;}
+  .mph{display:flex;align-items:center;justify-content:center;gap:3cqw;height:14cqh;flex:none;}
+  .mph span{flex:none;min-width:8em;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:clamp(9px,7cqh,15px);color:#fff;}
   .mph button{height:100%;min-height:30px;padding:0 3cqw;border:1px solid #555;border-radius:8px;background:#222;color:#fff;font-family:var(--pix);font-size:clamp(8px,6cqh,13px);}
   .mph button.x{background:#c62828;border-color:#ff8a80;min-width:44px;}
   .mph button:active{transform:scale(.93);}
   .mpc{flex:1;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;gap:1.5cqh 1.5cqw;min-height:0;}
-  @container (orientation: portrait){ .mpc{grid-template-columns:repeat(3,1fr);} .mph span{display:none;} .mph{justify-content:flex-end;} }
+  @container (orientation: portrait){ .mpc{grid-template-columns:repeat(3,1fr);} .mph span{display:none;} }
   .mcol{display:flex;flex-direction:column;align-items:center;gap:4%;min-height:0;container-type:size;}
   .mcol button{width:100%;flex:1 1 0;min-height:22px;border:0;border-radius:10px;background:#2c2c2c;color:#fff;font-size:clamp(16px,11cqh,30px);font-weight:800;line-height:1;}
   .mcol button:active{background:#555;transform:scale(.93);}
@@ -507,7 +507,7 @@ function makeQ(i,L){
   var mrow=document.createElement("div"); mrow.className="manarow";
   var mpanel=null;
   function toggleQM(){ if(mpanel) closeQM(); else openQM(); }
-  function closeQM(){ if(mpanel){ mpanel.remove(); mpanel=null; } delete qmOpen[i]; save(); }
+  function closeQM(){ if(mpanel){ mpanel.remove(); mpanel=null; } delete qmOpen[i]; render(); save(); }
   function openQM(){
     qmOpen[i]=1;
     mpanel=document.createElement("div"); mpanel.className="mpanel";
