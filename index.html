@@ -380,7 +380,6 @@ function maxCmdDmg(pl){ var m=0; for(var k in pl.cmdDmg){ if(pl.cmdDmg[k]>m) m=p
 /* OUT is set by hand from the player sheet: 0 life, 21 commander damage and 10 poison are only
    flagged in red, because some effects keep a player alive */
 function isDead(pl){ return !!pl.out; }
-function atRisk(pl){ return pl.life<=0 || maxCmdDmg(pl)>=21 || (pl.counters.poison||0)>=10; }
 function setCmdrCount(pi,count){
   snap();
   var opp=st.p[pi];
@@ -839,13 +838,9 @@ function openPlayer(i){
   var pl=st.p[i];
   pTitle.textContent=pl.name; pBody.innerHTML="";
 
-  g(pBody,"In partita");
-  var outB=document.createElement("div"); outB.className="btn"+(pl.out?"":" danger");
-  outB.textContent=pl.out?"Rimetti in gioco":"OUT – eliminato";
-  if(!pl.out && atRisk(pl)){ var why=document.createElement("div"); why.className="tip";
-    why.textContent=(pl.life<=0?"Vita a "+pl.life+". ":"")+(maxCmdDmg(pl)>=21?"21 danni da un comandante. ":"")+((pl.counters.poison||0)>=10?"10 segnalini veleno. ":"")+"Se nessun effetto lo tiene in gioco, segnalo OUT.";
-    pBody.appendChild(why); }
-  outB.addEventListener("click",function(){ snap(); pl.out=!pl.out; save(); build(); openPlayer(i); toast(pl.name+(pl.out?" è OUT":" rientra in gioco")); });
+  /* OUT toggle: grey = in game, red = out; tap again to bring the player back */
+  var outB=document.createElement("div"); outB.className="btn"+(pl.out?" danger":""); outB.textContent="OUT";
+  outB.addEventListener("click",function(){ snap(); pl.out=!pl.out; save(); build(); openPlayer(i); });
   pBody.appendChild(outB);
 
   g(pBody,"Nome");
