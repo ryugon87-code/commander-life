@@ -63,6 +63,9 @@
   .qpname button.x:active{transform:scale(.93);}
   .mph{display:flex;align-items:center;justify-content:center;gap:2.5cqw;height:11cqh;flex:none;}
   .mph button.on{background:#3d6bff;border-color:#3d6bff;}
+  .mph button.tg{display:flex;align-items:center;gap:1cqw;}
+  .mph button.tg i{width:clamp(8px,3.5cqh,14px);height:clamp(8px,3.5cqh,14px);border-radius:3px;flex:none;}
+  .mph button.tg b{font-weight:400;color:#ffd54a;}
   .mlab{width:100%;flex:none;text-align:center;font-family:var(--pix);font-size:clamp(7px,4.2cqh,12px);color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
   .mph span:empty{display:none;}
   .mph span{flex:none;margin-left:2cqw;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:clamp(9px,7cqh,15px);color:#fff;}
@@ -101,7 +104,7 @@
   .dnum.leth{color:#ff5252;}
 
   /* global controls — board dead-centre, never overlaps quad content (which sits at each quad's outer edge) */
-  #center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:4px;background:#000;border:1px solid #2a2a2a;border-radius:13px;padding:9px;box-shadow:0 4px 16px rgba(0,0,0,.6);width:200px;}
+  #center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--cs,1));z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:4px;background:#000;border:1px solid #2a2a2a;border-radius:13px;padding:9px;box-shadow:0 4px 16px rgba(0,0,0,.6);width:200px;}
   #center .clk{font-family:var(--pix);font-size:16px;color:#fff;letter-spacing:.03em;text-align:center;}
   #center .clk.paused{color:#777;}
   #center .turnclk{font-family:var(--pix);font-size:11px;color:#9aa;text-align:center;letter-spacing:.02em;}
@@ -111,7 +114,7 @@
   #center button svg{width:13px;height:13px;}
   #center button:active{background:#333;}
   /* 2 players side by side: centre controls become a slim column in the gap between the halves */
-  body.two #grid{column-gap:84px;}
+  body.two #grid{column-gap:calc(84px * var(--cs,1));}
   body.two #center{width:72px;padding:7px 6px;}
   body.two #center .clk{font-size:11px;}
   body.two #center .turnclk{font-size:8px;}
@@ -433,6 +436,8 @@ function build(){
   var cols=L.cols, rows=L.rows;
   if(portrait && st.n<=3 && st.layout!=="pinwheel"){ cols=1; rows=st.n; }
   document.body.classList.toggle("two", L.cols===2 && st.n===2);
+  /* centre controls scale with the screen (phones 1x, tablets up to 1.5x) */
+  document.documentElement.style.setProperty("--cs",Math.max(1,Math.min(1.5,Math.min(window.innerWidth,window.innerHeight)/430)).toFixed(2));
   grid.style.gridTemplateColumns="repeat("+cols+",1fr)";
   grid.style.gridTemplateRows="repeat("+rows+",1fr)";
   grid.innerHTML="";
@@ -581,14 +586,22 @@ function qpSpec(i,kind){
     for(var k=0;k<st.n;k++){ if(k===i) continue; (function(k){
       var opp=st.p[k], two=(opp.cmdrs||[]).length>=2;
       (two?[0,1]:[0]).forEach(function(slot){
-        var key=k+"|"+slot, cn=two?((opp.cmdrs[slot]&&opp.cmdrs[slot].name)||("Comandante "+(slot+1))):"";
+        var key=k+"|"+slot, cn=two?((opp.cmdrs[slot]&&opp.cmdrs[slot].name)||""):"";
+        if(two && (!cn || /^Comandante( \d)?$/.test(cn))) cn=opp.name+" "+(slot+1);   /* unnamed partners: "Giulia 1", "Giulia 2" */
         items.push({icon:textTok(opp.color,initials(opp.name)+(two?String(slot+1):""),"#fff"), step:1, lethal:21,
           label:two?cn:opp.name,   /* partners: the token says whose, the label says which commander */
           get:function(){ return pl.cmdDmg[key]||0; },
           set:function(v){ v=Math.max(0,v); pl.life-=v-(pl.cmdDmg[key]||0); pl.cmdDmg[key]=v; }});
       });
     })(k); }
-    return { items:items, info:function(){ return "VITA "+pl.life; }, actions:[] };
+    /* one toggle per opponent: 1 or 2 commanders (partner); damage stays separate per commander */
+    var toggles=[];
+    for(var k2=0;k2<st.n;k2++){ if(k2===i) continue; (function(k){
+      var opp=st.p[k], two=(opp.cmdrs||[]).length>=2;
+      toggles.push({html:'<i style="background:'+opp.color+'"></i>'+initials(opp.name)+' <b>×'+(two?2:1)+'</b>', on:two,
+        click:function(){ setCmdrCount(k,two?1:2); toast(opp.name+": "+(two?"1 comandante":"2 comandanti (partner)")); }});
+    })(k2); }
+    return { items:items, info:function(){ return "VITA "+pl.life; }, actions:[], toggles:toggles, togglesTitle:"PARTNER" };
   }
   if(kind==="mana") return { info:function(t){ return t?"TOTALE "+t:""; },
     items:MANA.map(function(m){ return {icon:manaIcon(m[0]), step:1,
@@ -615,7 +628,7 @@ function drawPanel(){
   var vw=window.innerWidth, vh=window.innerHeight, W=side?vh:vw, H=side?vw:vh;
   qpEl.innerHTML=""; qpEl.className="on";
   var box=document.createElement("div"); box.className="mpanel";
-  box.style.width=Math.round(Math.min(W*0.94,780))+"px"; box.style.height=Math.round(Math.min(H*0.9,480))+"px";
+  box.style.width=Math.round(W*0.96)+"px"; box.style.height=Math.round(H*0.94)+"px";
   box.style.transform="translate(-50%,-50%) rotate("+rot+"deg)";
   /* row 1: whose panel this is */
   var nm=document.createElement("div"); nm.className="qpname";
@@ -655,6 +668,13 @@ function drawPanel(){
     b.addEventListener("click",function(){ snap(); if(ac[1]()==="redraw"){ save(); drawPanel(); rerender(); return; } upd(); saveSoft(); });
     act.appendChild(b);
   });
+  if(spec.toggles){
+    var tl=document.createElement("span"); tl.textContent=spec.togglesTitle; act.appendChild(tl);
+    spec.toggles.forEach(function(tg){
+      var b=document.createElement("button"); b.className="tg"+(tg.on?" on":""); b.innerHTML=tg.html;
+      b.addEventListener("click",tg.click); act.appendChild(b);
+    });
+  }
   function upd(){
     var t=0; cells.forEach(function(c){ var v=c.it.get(); t+=v; c.n.textContent=v;
       c.sym.className="ms"+(v?"":" zero")+(c.it.lethal&&v>=c.it.lethal?" leth":""); });
@@ -928,7 +948,7 @@ document.getElementById("cMenu").addEventListener("click",openSettings);
 function openSettings(){
   sBody.innerHTML="";
   g(sBody,"Partita");
-  var nb=document.createElement("div"); nb.className="btn"; nb.textContent="Nuova partita (tutti a "+st.start+")";
+  var nb=document.createElement("div"); nb.className="btn danger"; nb.textContent="Nuova partita";
   nb.addEventListener("click",function(){ if(confirm("Nuova partita?")){ newGame(); sSheet.className="sheet"; toast("Nuova partita"); } });
   sBody.appendChild(nb);
   var who=document.createElement("div"); who.className="btn"; who.textContent="Chi inizia? (a caso)";
