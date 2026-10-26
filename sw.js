@@ -1,5 +1,5 @@
 /* Simple offline cache — only active when the page is served over http(s) */
-var CACHE = "commander-life-v14";
+var CACHE = "commander-life-v15";
 var ASSETS = [
   "./",
   "./index.html",
@@ -19,6 +19,11 @@ self.addEventListener("activate", function(e){
 });
 self.addEventListener("fetch", function(e){
   if(e.request.method !== "GET") return;
+  /* the app fetches card art with CORS to keep an offline copy: give it a real network response */
+  if(e.request.mode === "cors" && new URL(e.request.url).origin !== location.origin){
+    e.respondWith(fetch(e.request).catch(function(){ return caches.match(e.request); }));
+    return;
+  }
   e.respondWith(
     caches.match(e.request).then(function(hit){
       return hit || fetch(e.request).then(function(res){
