@@ -54,10 +54,19 @@
   .mp b{font-family:var(--pix);font-size:max(10px,1.6vh);color:#fff;font-weight:400;}
   .qb .mtot{background:#ffd54a;color:#222;border-radius:6px;padding:1px 4px;}
   /* in-quad mana panel: lives inside the rotated frame, so it faces its player */
-  .mpanel{position:absolute;inset:0;z-index:20;background:rgba(6,6,8,.9);display:flex;flex-direction:column;container-type:size;padding:2.5cqh 2cqw;gap:2cqh;}
-  .mph{display:flex;align-items:center;justify-content:center;gap:3cqw;height:14cqh;flex:none;}
+  /* player panel: one centred box, rotated toward its player */
+  #qp{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.55);display:none;}
+  #qp.on{display:block;}
+  .mpanel{position:absolute;left:50%;top:50%;background:#0d0d10;border:1px solid #3a3a3a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.7);display:flex;flex-direction:column;container-type:size;padding:2.5cqh 2.5cqw;gap:2.5cqh;}
+  .qpname{display:flex;align-items:center;gap:2.5cqw;height:12cqh;flex:none;}
+  .qpname i{width:clamp(12px,5cqh,22px);height:clamp(12px,5cqh,22px);border-radius:5px;flex:none;}
+  .qpname span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pix);font-size:clamp(11px,6.5cqh,22px);color:#fff;text-transform:uppercase;}
+  .qpname button.x{height:100%;min-width:48px;aspect-ratio:1.3;border:1px solid #ff8a80;border-radius:10px;background:#c62828;color:#fff;font-size:clamp(14px,6cqh,22px);}
+  .qpname button.x:active{transform:scale(.93);}
+  .mph{display:flex;align-items:center;justify-content:center;gap:2.5cqw;height:11cqh;flex:none;}
+  .mph button.on{background:#3d6bff;border-color:#3d6bff;}
   .mph span:empty{display:none;}
-  .mph span{flex:none;min-width:8em;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:clamp(9px,7cqh,15px);color:#fff;}
+  .mph span{flex:none;margin-left:2cqw;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:clamp(9px,7cqh,15px);color:#fff;}
   .mph button{height:100%;min-height:30px;min-width:0;flex:0 1 auto;overflow:hidden;white-space:nowrap;padding:0 3cqw;border:1px solid #555;border-radius:8px;background:#222;color:#fff;font-family:var(--pix);font-size:clamp(8px,6cqh,13px);}
   .mph button.x{background:#c62828;border-color:#ff8a80;min-width:44px;flex:none;}
   .mph button:active{transform:scale(.93);}
@@ -113,7 +122,6 @@
   #center button svg{width:13px;height:13px;}
   #center button:active{background:#333;}
   /* 2 players side by side: centre controls become a slim column in the gap between the halves */
-  body.qp #center{visibility:hidden;}
   body.two #grid{column-gap:84px;}
   body.two #center{width:72px;padding:7px 6px;}
   body.two #center .clk{font-size:11px;}
@@ -176,7 +184,7 @@
   .cardItem .cn{font-size:11px;padding:6px 7px;line-height:1.25;color:#ddd;}
   .cardItem:active{border-color:#3d6bff;}
 
-  #toast{position:absolute;left:50%;bottom:46px;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:9px 16px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:opacity .3s;text-align:center;max-width:80%;}
+  #toast{pointer-events:none;position:absolute;left:50%;bottom:46px;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:9px 16px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:opacity .3s;text-align:center;max-width:80%;}
   #toast.show{opacity:1;}
   input[type=file]{display:none;}
 </style>
@@ -255,6 +263,7 @@
 
 <input type="file" id="filePick" accept="image/*">
 <input type="file" id="importPick" accept="application/json,.json">
+<div id="qp"></div>
 <div id="toast"></div>
 
 <script src="art/cards.js"></script>
@@ -432,7 +441,7 @@ function layoutFor(){
 }
 
 /* ---------- board ---------- */
-var grid=document.getElementById("grid"), bgCache={}, qmOpen={};
+var grid=document.getElementById("grid"), bgCache={};
 function build(){
   var L=layoutFor();
   var portrait=window.innerHeight>window.innerWidth;
@@ -441,13 +450,14 @@ function build(){
   document.body.classList.toggle("two", L.cols===2 && st.n===2);
   grid.style.gridTemplateColumns="repeat("+cols+",1fr)";
   grid.style.gridTemplateRows="repeat("+rows+",1fr)";
-  grid.innerHTML=""; syncCenter();
+  grid.innerHTML="";
   for(var i=0;i<st.n;i++){
     var q=makeQ(i,L);
     if(i===st.n-1 && cols===2 && st.n%2===1) q.style.gridColumn="span 2";  /* last seat takes the empty cell */
     grid.appendChild(q);
   }
   for(var k=0;k<grid.children.length;k++) grid.children[k]._fit();
+  if(qpOpen) drawPanel();   /* state may have been replaced (undo, preset): redraw against it */
   document.getElementById("cTurn").style.display=st.turnMode?"":"none";
   renderClock();
 }
@@ -514,74 +524,11 @@ function makeQ(i,L){
   // bottom bar (near the player): quick buttons
   var bar=document.createElement("div"); bar.className="qbot";
   bar.appendChild(dannoBtn(i));
-  var taxBtn=qbtn("TASSA",function(){ toggleQP("tax"); });
-  var segBtn=qbtn("SEGN.",function(){ toggleQP("seg"); });
-  var manaBtn=qbtn("MANA",function(){ toggleQP("mana"); });
+  var taxBtn=qbtn("TASSA",function(){ openPanel(i,"tax"); });
+  var segBtn=qbtn("SEGN.",function(){ openPanel(i,"seg"); });
+  var manaBtn=qbtn("MANA",function(){ openPanel(i,"mana"); });
   bar.appendChild(taxBtn); bar.appendChild(segBtn); bar.appendChild(manaBtn);
   var mrow=document.createElement("div"); mrow.className="manarow";
-  var mpanel=null, mkind=null;
-
-  /* what each in-quad panel shows: a list of {key, icon, get, add(d)} plus header actions */
-  function qpSpec(kind){
-    pl.mana=pl.mana||{}; pl.custom=pl.custom||[];
-    if(kind==="mana") return { title:"MANA", total:true,
-      items:MANA.map(function(m){ return {key:m[0], icon:manaIcon(m[0]), step:1,
-        get:function(){ return pl.mana[m[0]]||0; }, set:function(v){ pl.mana[m[0]]=Math.max(0,v); }}; }),
-      actions:[["SVUOTA",function(){ clearMana(pl); }]] };
-    if(kind==="tax") return { title:"TASSA",
-      items:[{key:"tax", icon:counterIcon("tax"), step:2,
-        get:function(){ return pl.counters.tax||0; }, set:function(v){ pl.counters.tax=Math.max(0,v); }}],
-      actions:[["AZZERA",function(){ pl.counters.tax=0; }]] };
-    var items=CATALOG.filter(function(c){ return c.k!=="tax"; }).map(function(c){ return {key:c.k, icon:counterIcon(c.k), step:1, lethal:c.lethal,
-      get:function(){ return pl.counters[c.k]||0; }, set:function(v){ pl.counters[c.k]=Math.max(0,v); }}; });
-    pl.custom.forEach(function(cu){ items.push({key:"c:"+cu.name, icon:counterIcon(null,cu.name), step:1,
-      get:function(){ return cu.value; }, set:function(v){ cu.value=v; }}); });
-    return { title:"", items:items,
-      actions:[["NUOVO",function(){ var nm=prompt("Nome contatore:"); if(nm&&nm.trim()){ pl.custom.push({name:nm.trim(),value:0}); return "rebuild"; } }],
-               ["AZZERA",function(){ pl.counters=pl.counters.tax?{tax:pl.counters.tax}:{}; pl.custom.forEach(function(cu){ cu.value=0; }); }]] };
-  }
-  function toggleQP(kind){ if(mpanel && mkind===kind) closeQP(); else openQP(kind); }
-  function closeQP(){ if(mpanel){ mpanel.remove(); mpanel=null; mkind=null; } delete qmOpen[i]; render(); save(); syncCenter(); }
-  function openQP(kind){
-    if(mpanel){ mpanel.remove(); mpanel=null; }
-    qmOpen[i]=kind; mkind=kind;
-    var spec=qpSpec(kind);
-    mpanel=document.createElement("div"); mpanel.className="mpanel";
-    ["click","touchstart","mousedown"].forEach(function(ev){ mpanel.addEventListener(ev,function(e){ e.stopPropagation(); },{passive:true}); });
-    var hd=document.createElement("div"); hd.className="mph";
-    var tt=document.createElement("span"); hd.appendChild(tt);
-    spec.actions.forEach(function(ac){
-      var bt=document.createElement("button"); bt.textContent=ac[0];
-      bt.addEventListener("click",function(){ snap(); if(ac[1]()==="rebuild"){ save(); openQP(kind); return; } upd(); saveSoft(); });
-      hd.appendChild(bt);
-    });
-    var x=document.createElement("button"); x.className="x"; x.textContent="✕";
-    x.addEventListener("click",closeQP); hd.appendChild(x);
-    var cols=document.createElement("div"); cols.className="mpc";
-    var ni=spec.items.length, c6=ni<=8?ni:Math.ceil(ni/2);   /* up to 8 in one row, then two balanced rows */
-    cols.style.setProperty("--n6",c6); cols.style.setProperty("--w6",Math.max(6,c6)); cols.style.setProperty("--n3",Math.min(ni,3));
-    var cells=[];
-    spec.items.forEach(function(it){
-      var c=document.createElement("div"); c.className="mcol";
-      var plus=document.createElement("button"), minus=document.createElement("button"), sym=document.createElement("div"), n=document.createElement("b");
-      plus.textContent="+"; minus.textContent="–";
-      sym.className="ms"; sym.innerHTML=it.icon; sym.appendChild(n);
-      function add(d){ snap(); it.set(it.get()+d); vib(10); upd(); saveSoft(); }
-      plus.addEventListener("click",function(){ add(it.step); });
-      sym.addEventListener("click",function(){ add(it.step); });
-      minus.addEventListener("click",function(){ add(-it.step); });
-      c.appendChild(plus); c.appendChild(sym); c.appendChild(minus);
-      cols.appendChild(c); cells.push({it:it,sym:sym,n:n});
-    });
-    function upd(){
-      var t=0; cells.forEach(function(c){ var v=c.it.get(); t+=v; c.n.textContent=v;
-        c.sym.className="ms"+(v?"":" zero")+(c.it.lethal&&v>=c.it.lethal?" leth":""); });
-      tt.textContent=spec.title+(spec.total&&t?" "+t:"");
-      render();
-    }
-    mpanel.appendChild(hd); mpanel.appendChild(cols);
-    fr.appendChild(mpanel); upd(); syncCenter();
-  }
 
   fr.appendChild(bg); fr.appendChild(scrim);
   fr.appendChild(zA); fr.appendChild(zB);
@@ -598,7 +545,7 @@ function makeQ(i,L){
       var ic=document.createElement("i"); ic.innerHTML=icon;
       var n=document.createElement("b"); n.textContent=v;
       d.appendChild(ic); d.appendChild(n);
-      d.addEventListener("click",function(e){ e.stopPropagation(); openQP(kind); });
+      d.addEventListener("click",function(e){ e.stopPropagation(); openPanel(i,kind); });
       box.appendChild(d);
     }
     function badge(btn,label,v){ btn.innerHTML=(v?'<i><span class="mtot">'+v+'</span></i>':'')+label; }
@@ -607,7 +554,6 @@ function makeQ(i,L){
     (pl.custom||[]).forEach(function(cu){ if(cu.value!==0) chip(pills,counterIcon(null,cu.name),cu.value,"seg",false); });
     mrow.innerHTML="";
     MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v>0) chip(mrow,manaIcon(m[0]),v,"mana",false); });
-    mrow.style.display=pills.style.display=mpanel?"none":"";
     var segN=pills.children.length;
     badge(manaBtn,"MANA",manaTotal(pl)); badge(taxBtn,"TASSA",pl.counters.tax||0); badge(segBtn,"SEGN.",segN);
     // (commander damage is shown on the DANNO corner button)
@@ -633,11 +579,85 @@ function makeQ(i,L){
     life.style.fontSize=Math.round(Math.min(h/2.6, w/2.4))+"px";
   };
   q._render=render; render();
-  if(qmOpen[i]) setTimeout(function(){ if(!mpanel && q.isConnected) openQP(qmOpen[i]); },0);  /* survive rebuilds */
   return q;
 }
-/* while any in-quad panel is open the centre controls step aside, so they never cover its buttons */
-function syncCenter(){ document.body.classList.toggle("qp", !!document.querySelector(".mpanel")); }
+/* ---------- player panel: one big panel in the middle, turned toward the player who opened it ---------- */
+var qpEl=document.getElementById("qp"), qpOpen=null;   /* {i, kind} */
+function qpSpec(i,kind){
+  var pl=st.p[i]; pl.mana=pl.mana||{}; pl.custom=pl.custom||[];
+  if(kind==="mana") return { total:true,
+    items:MANA.map(function(m){ return {icon:manaIcon(m[0]), step:1,
+      get:function(){ return pl.mana[m[0]]||0; }, set:function(v){ pl.mana[m[0]]=Math.max(0,v); }}; }),
+    actions:[["SVUOTA",function(){ clearMana(pl); }]] };
+  if(kind==="tax") return {
+    items:[{icon:counterIcon("tax"), step:2,
+      get:function(){ return pl.counters.tax||0; }, set:function(v){ pl.counters.tax=Math.max(0,v); }}],
+    actions:[["AZZERA",function(){ pl.counters.tax=0; }]] };
+  var items=CATALOG.filter(function(c){ return c.k!=="tax"; }).map(function(c){ return {icon:counterIcon(c.k), step:1, lethal:c.lethal,
+    get:function(){ return pl.counters[c.k]||0; }, set:function(v){ pl.counters[c.k]=Math.max(0,v); }}; });
+  pl.custom.forEach(function(cu){ items.push({icon:counterIcon(null,cu.name), step:1,
+    get:function(){ return cu.value; }, set:function(v){ cu.value=v; }}); });
+  return { items:items,
+    actions:[["+ NUOVO",function(){ var nm=prompt("Nome contatore:"); if(nm&&nm.trim()){ pl.custom.push({name:nm.trim(),value:0}); return "redraw"; } }],
+             ["AZZERA",function(){ pl.counters=pl.counters.tax?{tax:pl.counters.tax}:{}; pl.custom.forEach(function(cu){ cu.value=0; }); }]] };
+}
+function openPanel(i,kind){ qpOpen={i:i,kind:kind}; drawPanel(); }
+function closePanel(){ qpOpen=null; qpEl.className=""; qpEl.innerHTML=""; save(); rerender(); }
+qpEl.addEventListener("click",function(e){ if(e.target===qpEl) closePanel(); });   /* tap outside = close */
+function drawPanel(){
+  var i=qpOpen.i, kind=qpOpen.kind, pl=st.p[i], spec=qpSpec(i,kind);
+  var rot=effRot(i,layoutFor()), side=(rot===90||rot===270);
+  var vw=window.innerWidth, vh=window.innerHeight, W=side?vh:vw, H=side?vw:vh;
+  qpEl.innerHTML=""; qpEl.className="on";
+  var box=document.createElement("div"); box.className="mpanel";
+  box.style.width=Math.round(Math.min(W*0.94,780))+"px"; box.style.height=Math.round(Math.min(H*0.9,480))+"px";
+  box.style.transform="translate(-50%,-50%) rotate("+rot+"deg)";
+  /* row 1: whose panel this is */
+  var nm=document.createElement("div"); nm.className="qpname";
+  var dot=document.createElement("i"); dot.style.background=pl.color;
+  var nt=document.createElement("span"); nt.textContent=pl.name;
+  var x=document.createElement("button"); x.className="x"; x.textContent="✕"; x.addEventListener("click",closePanel);
+  nm.appendChild(dot); nm.appendChild(nt); nm.appendChild(x);
+  /* row 2: tabs */
+  var tabs=document.createElement("div"); tabs.className="mph";
+  [["mana","MANA"],["seg","SEGN."],["tax","TASSA"]].forEach(function(tb){
+    var b=document.createElement("button"); b.textContent=tb[1]; if(tb[0]===kind) b.className="on";
+    b.addEventListener("click",function(){ qpOpen.kind=tb[0]; drawPanel(); }); tabs.appendChild(b);
+  });
+  var tot=document.createElement("span"); tabs.appendChild(tot);
+  /* tokens */
+  var cols=document.createElement("div"); cols.className="mpc";
+  var ni=spec.items.length, c6=ni<=8?ni:Math.ceil(ni/2);   /* up to 8 in one row, then two balanced rows */
+  cols.style.setProperty("--n6",c6); cols.style.setProperty("--w6",Math.max(6,c6)); cols.style.setProperty("--n3",Math.min(ni,3));
+  var cells=[];
+  spec.items.forEach(function(it){
+    var c=document.createElement("div"); c.className="mcol";
+    var plus=document.createElement("button"), minus=document.createElement("button"), sym=document.createElement("div"), n=document.createElement("b");
+    plus.textContent="+"; minus.textContent="–";
+    sym.className="ms"; sym.innerHTML=it.icon; sym.appendChild(n);
+    function add(d){ snap(); it.set(it.get()+d); vib(10); upd(); saveSoft(); }
+    plus.addEventListener("click",function(){ add(it.step); });
+    sym.addEventListener("click",function(){ add(it.step); });
+    minus.addEventListener("click",function(){ add(-it.step); });
+    c.appendChild(plus); c.appendChild(sym); c.appendChild(minus);
+    cols.appendChild(c); cells.push({it:it,sym:sym,n:n});
+  });
+  /* bottom row: actions */
+  var act=document.createElement("div"); act.className="mph";
+  spec.actions.forEach(function(ac){
+    var b=document.createElement("button"); b.textContent=ac[0];
+    b.addEventListener("click",function(){ snap(); if(ac[1]()==="redraw"){ save(); drawPanel(); rerender(); return; } upd(); saveSoft(); });
+    act.appendChild(b);
+  });
+  function upd(){
+    var t=0; cells.forEach(function(c){ var v=c.it.get(); t+=v; c.n.textContent=v;
+      c.sym.className="ms"+(v?"":" zero")+(c.it.lethal&&v>=c.it.lethal?" leth":""); });
+    tot.textContent=spec.total&&t?"TOTALE "+t:"";
+    rerender();
+  }
+  box.appendChild(nm); box.appendChild(tabs); box.appendChild(cols); box.appendChild(act);
+  qpEl.appendChild(box); upd();
+}
 function pill(box,txt,hot){ var d=document.createElement("div"); d.className="pill"+(hot?" hot":""); d.textContent=txt; d.style.fontFamily="var(--pix)"; d.style.fontSize="1.35vh"; box.appendChild(d); return d; }
 
 // mini seat-map: a grid matching the on-screen quad layout, the source player's cell lit
@@ -1351,7 +1371,8 @@ window.addEventListener("resize",function(){ if(rez)clearTimeout(rez); rez=setTi
 try{ history.pushState({k:1},""); }catch(e){}
 window.addEventListener("popstate",function(){
   var open=document.querySelector(".sheet.on");
-  if(open){ if(open.id==="cam") stopCam(); open.className="sheet"; }
+  if(qpOpen) closePanel();
+  else if(open){ if(open.id==="cam") stopCam(); open.className="sheet"; }
   try{ history.pushState({k:1},""); }catch(e){}
 });
 
