@@ -43,7 +43,24 @@
   .pills{position:absolute;left:6%;right:6%;top:67%;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;z-index:4;pointer-events:none;}
   .pill{min-width:26px;height:24px;padding:0 8px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;font-family:var(--pix);font-size:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.3);}
   .pill.hot{background:#c62828;border-color:#ff8a80;}
-  .pill.mana{color:#111;border-color:rgba(0,0,0,.3);}
+  /* floating mana: round pips like the card symbols */
+  .manarow{position:absolute;left:4%;right:4%;top:17.5%;display:flex;gap:6px;justify-content:center;z-index:7;}
+  .mp{display:flex;align-items:center;gap:3px;background:rgba(8,8,10,.7);border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:2px 7px 2px 2px;box-shadow:0 2px 8px rgba(0,0,0,.45);}
+  .mp:active{transform:scale(.92);}
+  .mp i,.msym{font-style:normal;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:var(--pix);color:#151515;box-shadow:inset 0 -2px 0 rgba(0,0,0,.25);}
+  .mp i{width:2.8vh;height:2.8vh;min-width:20px;min-height:20px;font-size:max(9px,1.3vh);}
+  .mp b{font-family:var(--pix);font-size:max(10px,1.6vh);color:#fff;font-weight:400;}
+  .qb .mtot{background:#ffd54a;color:#222;border-radius:6px;padding:1px 4px;}
+  .mgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;max-width:760px;}
+  .mtile{background:#161616;border:1px solid #2a2a2a;border-radius:14px;padding:12px 8px;display:flex;flex-direction:column;align-items:center;gap:8px;}
+  .mtile.on{border-color:#666;}
+  .msym{width:64px;height:64px;font-size:22px;}
+  .msym:active{transform:scale(.92);}
+  .mtile .mn{font-family:var(--pix);font-size:26px;}
+  .mtile .ml{font-size:12px;color:#999;}
+  .mtile .mb{display:flex;gap:6px;}
+  .mtile .mb button{width:44px;height:40px;border:0;border-radius:8px;background:#333;color:#fff;font-size:20px;font-weight:800;}
+  .mtile .mb button:active{background:#555;}
 
   .qbot{position:absolute;left:5%;right:5%;bottom:3%;display:flex;gap:4px;justify-content:center;align-items:flex-end;flex-wrap:wrap;z-index:8;}
   .qb{font-family:var(--pix);font-size:10px;color:rgba(255,255,255,.92);background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 8px;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:4px;white-space:nowrap;}
@@ -296,13 +313,14 @@ function cardSrc(c){ return c.url || c.arturl || c.file; }
 var st;
 try{ st=JSON.parse(localStorage.getItem(LS)||"null"); }catch(e){ st=null; }
 function newSeat(i,life){ return {name:"Giocatore "+(i+1),color:COLORS[i%6],bg:{type:"solid"},life:life,counters:{},custom:[],mana:{},cmdrs:[{name:"Comandante",art:null}],cmdDmg:{},rot:null,hist:[]}; }
-function fresh(n,life){ var s={n:n,start:life,active:0,turn:1,monarch:-1,turnMode:false,vibrate:false,sound:true,wakeLock:true,layout:"grid",presets:[],match:{elapsed:0,turnElapsed:0,running:false},p:[]}; for(var i=0;i<6;i++) s.p.push(newSeat(i,life)); return s; }
+function fresh(n,life){ var s={n:n,start:life,active:0,turn:1,monarch:-1,turnMode:false,vibrate:false,sound:true,wakeLock:true,manaClear:true,layout:"grid",presets:[],match:{elapsed:0,turnElapsed:0,running:false},p:[]}; for(var i=0;i<6;i++) s.p.push(newSeat(i,life)); return s; }
 function migrate(st){
 if(!st||typeof st!=="object") st=fresh(4,40);
 if(!LAYOUTS[st.n]) st.n=4;
 if(!(st.start>0)) st.start=40;
 if(!st.p||st.p.length<6){ st.p=st.p||[]; for(var _i=st.p.length;_i<6;_i++) st.p.push(newSeat(_i,st.start||40)); }
 if(st.wakeLock===undefined) st.wakeLock=true;
+if(st.manaClear===undefined) st.manaClear=true;
 if(st.monarch===undefined) st.monarch=-1;
 if(st.turnMode===undefined) st.turnMode=false;
 if(st.vibrate===undefined) st.vibrate=false;
@@ -467,12 +485,14 @@ function makeQ(i,L){
   bar.appendChild(dannoBtn(i));
   bar.appendChild(qbtn("TASSA",function(){ openTax(i); }, (pl.counters.tax? pl.counters.tax : null)));
   bar.appendChild(qbtn("SEGN.",function(){ openCounters(i); }));
-  bar.appendChild(qbtn("MANA",function(){ openMana(i); }));
+  var mtot=manaTotal(pl);
+  bar.appendChild(qbtn("MANA",function(){ openMana(i); }, mtot?'<span class="mtot">'+mtot+'</span>':null));
+  var mrow=document.createElement("div"); mrow.className="manarow";
 
   fr.appendChild(bg); fr.appendChild(scrim);
   fr.appendChild(zA); fr.appendChild(zB);
   fr.appendChild(pills); fr.appendChild(delta); fr.appendChild(life); fr.appendChild(out);
-  fr.appendChild(head); fr.appendChild(bar);
+  fr.appendChild(mrow); fr.appendChild(head); fr.appendChild(bar);
   q.appendChild(fr);
   var aDelta=-1, bDelta=1;
 
@@ -483,7 +503,14 @@ function makeQ(i,L){
     var poison=pl.counters.poison||0;
     CATALOG.forEach(function(c){ if(c.k==="tax") return; var v=pl.counters[c.k]||0; if(v!==0) pill(pills,c.tag+" "+v, c.lethal&&v>=c.lethal); });
     (pl.custom||[]).forEach(function(cu){ if(cu.value!==0) pill(pills, cu.name.toUpperCase()+" "+cu.value,false); });
-    MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v>0){ var d=pill(pills,m[0]+" "+v,false); d.className+=" mana"; d.style.background=m[2]; } });
+    mrow.innerHTML="";
+    MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v<=0) return;
+      var d=document.createElement("div"); d.className="mp";
+      var ic=document.createElement("i"); ic.textContent=m[0]; ic.style.background=m[2];
+      var n=document.createElement("b"); n.textContent=v;
+      d.appendChild(ic); d.appendChild(n);
+      d.addEventListener("click",function(e){ e.stopPropagation(); openMana(i); });
+      mrow.appendChild(d); });
     // (commander damage is shown on the DANNO corner button)
     q.className=q.className.replace(" dead","");
     if(isDead(pl)) q.className+=" dead";
@@ -793,6 +820,7 @@ function openSettings(){
   sBody.appendChild(toggleRow("Indicatore di turno + tasto TURNO",function(){return st.turnMode;},function(v){ st.turnMode=v; }));
   sBody.appendChild(toggleRow("Vibrazione (il browser chiede il permesso 1 volta)",function(){return st.vibrate;},function(v){ st.vibrate=v; if(v){ try{ navigator.vibrate&&navigator.vibrate(20); }catch(e){} } }));
   sBody.appendChild(toggleRow("Suoni (dado, campanello turno)",function(){return st.sound;},function(v){ st.sound=v; if(v){ audio(); sfx("tick"); } }));
+  sBody.appendChild(toggleRow("Svuota il mana fluttuante a ogni TURNO",function(){return st.manaClear;},function(v){ st.manaClear=v; }));
   sBody.appendChild(toggleRow("Schermo sempre acceso",function(){return st.wakeLock;},function(v){ st.wakeLock=v; wake(); }));
 
   g(sBody,"Preset di partenza");
@@ -1037,11 +1065,37 @@ function openCounters(i){
   fBody.appendChild(add);
 }
 var MANA=[["W","Bianco","#f8e7b9"],["U","Blu","#a9d5f5"],["B","Nero","#b0a7b8"],["R","Rosso","#f5a9a0"],["G","Verde","#a9e0b8"],["C","Incolore","#d8d8d8"]];
+function manaTotal(pl){ var t=0, m=pl.mana||{}; for(var k in m) t+=m[k]||0; return t; }
+function clearMana(pl){ pl.mana={}; }
 function openMana(i){
   var pl=st.p[i]; pl.mana=pl.mana||{};
-  focusRows(pl.name+" — Mana",MANA.map(function(m){
-    return {label:m[1],get:function(){return pl.mana[m[0]]||0;},set:function(x){ snap(); pl.mana[m[0]]=Math.max(0,x); }};
-  }));
+  function title(){ var t=manaTotal(pl); fTitle.textContent=pl.name+" — Mana fluttuante"+(t?" ("+t+")":""); }
+  fBody.innerHTML="";
+  var gridEl=document.createElement("div"); gridEl.className="mgrid";
+  MANA.forEach(function(m){
+    var t=document.createElement("div"), sym=document.createElement("div"), n=document.createElement("div"),
+        lb=document.createElement("div"), bb=document.createElement("div"), mi=document.createElement("button"), pl1=document.createElement("button");
+    sym.className="msym"; sym.textContent=m[0]; sym.style.background=m[2];
+    n.className="mn"; lb.className="ml"; lb.textContent=m[1]; bb.className="mb";
+    mi.textContent="–"; pl1.textContent="+";
+    function upd(){ var v=pl.mana[m[0]]||0; n.textContent=v; t.className="mtile"+(v?" on":""); title(); }
+    function add(d){ snap(); pl.mana[m[0]]=Math.max(0,(pl.mana[m[0]]||0)+d); save(); upd(); }
+    sym.addEventListener("click",function(){ add(1); });   /* tap the symbol = +1 */
+    pl1.addEventListener("click",function(){ add(1); });
+    mi.addEventListener("click",function(){ add(-1); });
+    bb.appendChild(mi); bb.appendChild(pl1);
+    t.appendChild(sym); t.appendChild(n); t.appendChild(lb); t.appendChild(bb);
+    gridEl.appendChild(t); upd();
+  });
+  fBody.appendChild(gridEl);
+  var clr=document.createElement("div"); clr.className="btn danger"; clr.textContent="Svuota mana";
+  clr.addEventListener("click",function(){ snap(); clearMana(pl); save(); openMana(i); });
+  fBody.appendChild(clr);
+  var tip=document.createElement("div"); tip.className="tip"; tip.style.maxWidth="760px";
+  tip.textContent="Tocca un simbolo per aggiungere 1. Il mana si svuota da solo col tasto TURNO (disattivabile nel menu).";
+  fBody.appendChild(tip);
+  title();
+  fSheet.className="sheet on";
 }
 function openTax(i){
   var pl=st.p[i];
@@ -1124,6 +1178,7 @@ document.getElementById("cTurn").addEventListener("click",function(){
   snap();
   var nx=st.active, guard=0;
   do{ nx=nextSeatCW(nx); guard++; }while(isDead(st.p[nx]) && guard<st.n);  /* skip eliminated players */
+  if(st.manaClear) st.p.forEach(clearMana);
   st.active=nx; st.turn=(st.turn||1)+1; st.match.turnElapsed=0; save(); build(); sfx("bell"); vib(30);
 });
 
