@@ -929,7 +929,21 @@ document.getElementById("cMenu").addEventListener("click",openSettings);
 
 function openSettings(){
   sBody.innerHTML="";
-  g(sBody,"Numero giocatori");
+  g(sBody,"Partita");
+  var nb=document.createElement("div"); nb.className="btn"; nb.textContent="Nuova partita (tutti a "+st.start+")";
+  nb.addEventListener("click",function(){ if(confirm("Nuova partita?")){ newGame(); sSheet.className="sheet"; toast("Nuova partita"); } });
+  sBody.appendChild(nb);
+  var who=document.createElement("div"); who.className="btn"; who.textContent="Chi inizia? (a caso)";
+  who.addEventListener("click",function(){ var r=Math.floor(Math.random()*st.n); st.active=r; st.turn=1; st.match.turnElapsed=0; save(); build(); sSheet.className="sheet"; toast("Inizia: "+st.p[r].name); vib([20,60,20]); sfx("bell"); });
+  sBody.appendChild(who);
+  var pz=document.createElement("div"); pz.className="btn"; pz.textContent=st.match.paused?"Riprendi il tempo":"Pausa il tempo";
+  pz.addEventListener("click",function(){ st.match.paused=!st.match.paused; if(!st.match.paused) st.match.running=true; save(); renderClock(); openSettings(); });
+  sBody.appendChild(pz);
+  var stt=document.createElement("div"); stt.className="btn"; stt.textContent="Statistiche / grafico vita";
+  stt.addEventListener("click",function(){ sSheet.className="sheet"; openStats(); });
+  sBody.appendChild(stt);
+
+  g(sBody,"Tavolo — numero giocatori");
   var pc=document.createElement("div"); pc.className="chips";
   [2,3,4,5,6].forEach(function(n){ var c=document.createElement("div"); c.className="chip"+(st.n===n?" sel":""); c.textContent=n;
     c.addEventListener("click",function(){ st.n=n; if(st.active>=n) st.active=0; if(st.monarch>=n) st.monarch=-1; save(); build(); openSettings(); }); pc.appendChild(c); });
@@ -951,13 +965,6 @@ function openSettings(){
   cst.addEventListener("click",function(){ var v=parseInt(prompt("Vita iniziale:",st.start),10); if(v>0){ st.start=v; save(); openSettings(); } });
   lc.appendChild(cst); sBody.appendChild(lc);
 
-  g(sBody,"Opzioni");
-  sBody.appendChild(toggleRow("Indicatore di turno + tasto TURNO",function(){return st.turnMode;},function(v){ st.turnMode=v; }));
-  sBody.appendChild(toggleRow("Vibrazione (il browser chiede il permesso 1 volta)",function(){return st.vibrate;},function(v){ st.vibrate=v; if(v){ try{ navigator.vibrate&&navigator.vibrate(20); }catch(e){} } }));
-  sBody.appendChild(toggleRow("Suoni (dado, campanello turno)",function(){return st.sound;},function(v){ st.sound=v; if(v){ audio(); sfx("tick"); } }));
-  sBody.appendChild(toggleRow("Svuota il mana fluttuante a ogni TURNO",function(){return st.manaClear;},function(v){ st.manaClear=v; }));
-  sBody.appendChild(toggleRow("Schermo sempre acceso",function(){return st.wakeLock;},function(v){ st.wakeLock=v; wake(); }));
-
   g(sBody,"Preset di partenza");
   (st.presets||[]).forEach(function(pr,idx){
     var r=document.createElement("div"); r.className="orow";
@@ -972,19 +979,12 @@ function openSettings(){
   sp.addEventListener("click",savePreset);
   sBody.appendChild(sp);
 
-  g(sBody,"Partita");
-  var who=document.createElement("div"); who.className="btn"; who.textContent="Chi inizia? (a caso)";
-  who.addEventListener("click",function(){ var r=Math.floor(Math.random()*st.n); st.active=r; st.turn=1; st.match.turnElapsed=0; save(); build(); sSheet.className="sheet"; toast("Inizia: "+st.p[r].name); vib([20,60,20]); sfx("bell"); });
-  sBody.appendChild(who);
-  var pz=document.createElement("div"); pz.className="btn"; pz.textContent=st.match.paused?"Riprendi il tempo":"Pausa il tempo";
-  pz.addEventListener("click",function(){ st.match.paused=!st.match.paused; if(!st.match.paused) st.match.running=true; save(); renderClock(); openSettings(); });
-  sBody.appendChild(pz);
-  var nb=document.createElement("div"); nb.className="btn"; nb.textContent="Nuova partita (tutti a "+st.start+")";
-  nb.addEventListener("click",function(){ if(confirm("Nuova partita?")){ newGame(); sSheet.className="sheet"; toast("Nuova partita"); } });
-  sBody.appendChild(nb);
-  var stt=document.createElement("div"); stt.className="btn"; stt.textContent="Statistiche / grafico vita";
-  stt.addEventListener("click",function(){ sSheet.className="sheet"; openStats(); });
-  sBody.appendChild(stt);
+  g(sBody,"Opzioni");
+  sBody.appendChild(toggleRow("Indicatore di turno + tasto TURNO",function(){return st.turnMode;},function(v){ st.turnMode=v; }));
+  sBody.appendChild(toggleRow("Vibrazione (il browser chiede il permesso 1 volta)",function(){return st.vibrate;},function(v){ st.vibrate=v; if(v){ try{ navigator.vibrate&&navigator.vibrate(20); }catch(e){} } }));
+  sBody.appendChild(toggleRow("Suoni (dado, campanello turno)",function(){return st.sound;},function(v){ st.sound=v; if(v){ audio(); sfx("tick"); } }));
+  sBody.appendChild(toggleRow("Svuota il mana fluttuante a ogni TURNO",function(){return st.manaClear;},function(v){ st.manaClear=v; }));
+  sBody.appendChild(toggleRow("Schermo sempre acceso",function(){return st.wakeLock;},function(v){ st.wakeLock=v; wake(); }));
 
   g(sBody,"Backup");
   var ex=document.createElement("div"); ex.className="btn"; ex.textContent="Esporta .json"; ex.addEventListener("click",exportData);
