@@ -22,7 +22,7 @@
   .q .bg{position:absolute;inset:0;background-size:cover;background-position:center top;}
   .q .scrim{position:absolute;inset:0;background:rgba(0,0,0,0);}
   .q.hasimg .scrim{background:rgba(0,0,0,.34);}
-  .q.dead .frame{filter:grayscale(1) brightness(.42);}
+  .q.dead .frame>:not(.mpanel){filter:grayscale(1) brightness(.42);}
   .q.dead .out{display:flex;}
   .q.active{box-shadow:inset 0 0 0 5px #ffd54a,0 0 22px rgba(255,213,74,.5);}
 
@@ -40,13 +40,14 @@
   .out{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:none;text-align:center;font-weight:900;letter-spacing:.2em;color:rgba(255,255,255,.92);z-index:6;text-shadow:0 3px 12px #000;}
 
   .qhead{position:absolute;left:4%;right:4%;top:3%;display:flex;gap:5px;justify-content:center;align-items:center;z-index:8;}
-  .pills{position:absolute;left:6%;right:6%;top:67%;display:flex;flex-wrap:wrap;gap:4px;justify-content:center;z-index:4;pointer-events:none;}
+  .pills{position:absolute;left:6%;right:6%;top:66%;display:flex;flex-wrap:wrap;gap:5px;justify-content:center;z-index:7;}
   .pill{min-width:26px;height:24px;padding:0 8px;border-radius:12px;background:rgba(0,0,0,.6);color:#fff;font-family:var(--pix);font-size:10px;display:flex;align-items:center;justify-content:center;border:1px solid rgba(255,255,255,.3);}
   .pill.hot{background:#c62828;border-color:#ff8a80;}
   /* floating mana: round pips like the card symbols */
   .manarow{position:absolute;left:4%;right:4%;top:17.5%;display:flex;gap:6px;justify-content:center;z-index:7;}
   .mp{display:flex;align-items:center;gap:3px;background:rgba(8,8,10,.7);border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:2px 7px 2px 2px;box-shadow:0 2px 8px rgba(0,0,0,.45);}
   .mp:active{transform:scale(.92);}
+  .mp.hot{background:#c62828;border-color:#ff8a80;}
   .mp i,.msym,.mcol .ms{font-style:normal;display:flex;align-items:center;justify-content:center;}
   .mp i{width:3.4vh;height:3.4vh;min-width:24px;min-height:24px;}
   .mp i svg,.msym svg,.mcol .ms svg{width:100%;height:100%;display:block;}
@@ -56,11 +57,12 @@
   .mpanel{position:absolute;inset:0;z-index:20;background:rgba(6,6,8,.9);display:flex;flex-direction:column;container-type:size;padding:2.5cqh 2cqw;gap:2cqh;}
   .mph{display:flex;align-items:center;justify-content:center;gap:3cqw;height:14cqh;flex:none;}
   .mph span{flex:none;min-width:8em;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:clamp(9px,7cqh,15px);color:#fff;}
-  .mph button{height:100%;min-height:30px;padding:0 3cqw;border:1px solid #555;border-radius:8px;background:#222;color:#fff;font-family:var(--pix);font-size:clamp(8px,6cqh,13px);}
-  .mph button.x{background:#c62828;border-color:#ff8a80;min-width:44px;}
+  .mph button{height:100%;min-height:30px;min-width:0;flex:0 1 auto;overflow:hidden;white-space:nowrap;padding:0 3cqw;border:1px solid #555;border-radius:8px;background:#222;color:#fff;font-family:var(--pix);font-size:clamp(8px,6cqh,13px);}
+  .mph button.x{background:#c62828;border-color:#ff8a80;min-width:44px;flex:none;}
   .mph button:active{transform:scale(.93);}
-  .mpc{flex:1;display:grid;grid-template-columns:repeat(6,1fr);grid-auto-rows:1fr;gap:1.5cqh 1.5cqw;min-height:0;}
-  @container (orientation: portrait){ .mpc{grid-template-columns:repeat(3,1fr);} .mph span{display:none;} }
+  .mpc{flex:1;display:grid;grid-template-columns:repeat(var(--n6,6),calc((100% - 7.5cqw)/var(--w6,6)));justify-content:center;grid-auto-rows:1fr;gap:1.5cqh 1.5cqw;min-height:0;}
+  @container (orientation: portrait){ .mpc{grid-template-columns:repeat(var(--n3,3),calc((100% - 3cqw)/3));} .mph span{display:none;} .mph{gap:2cqw;} .mph button{padding:0 2cqw;font-size:8px;} }
+  .mcol .ms.leth{filter:drop-shadow(0 0 4px #ff3b30);} .mcol .ms.leth b{background:#c62828;}
   .mcol{display:flex;flex-direction:column;align-items:center;gap:4%;min-height:0;container-type:size;}
   .mcol button{width:100%;flex:1 1 0;min-height:22px;border:0;border-radius:10px;background:#2c2c2c;color:#fff;font-size:clamp(16px,11cqh,30px);font-weight:800;line-height:1;}
   .mcol button:active{background:#555;transform:scale(.93);}
@@ -109,6 +111,13 @@
   #center button{flex:1;font-family:var(--pix);font-size:8px;color:#e8e8e8;background:#1a1a1a;border:1px solid #555;border-radius:7px;padding:9px 2px;display:flex;align-items:center;justify-content:center;min-height:30px;}
   #center button svg{width:13px;height:13px;}
   #center button:active{background:#333;}
+  /* 2 players side by side: centre controls become a slim column in the gap between the halves */
+  body.two #grid{column-gap:84px;}
+  body.two #center{width:72px;padding:7px 6px;}
+  body.two #center .clk{font-size:11px;}
+  body.two #center .turnclk{font-size:8px;}
+  body.two #center .row{flex-direction:column;}
+  body.two #center button{flex:none;}
 
 
   .sheet{position:absolute;inset:0;background:rgba(0,0,0,.95);z-index:50;display:none;flex-direction:column;}
@@ -314,7 +323,7 @@ var CATALOG=[
   {k:"tax",label:"Tassa comandante",tag:"TAX"}
 ];
 var LAYOUTS={
- 2:{cols:1,rows:2,rot:[180,0],corner:["tr","br"]},
+ 2:{cols:2,rows:1,rot:[90,270],corner:["tl","tr"]},
  3:{cols:2,rows:2,rot:[180,180,0],corner:["tl","tr","bl"]},
  4:{cols:2,rows:2,rot:[180,180,0,0],corner:["tl","tr","bl","br"]},
  5:{cols:2,rows:3,rot:[180,180,0,0,0],corner:["tl","tr","bl","br","bl"]},
@@ -413,8 +422,10 @@ function cwOrder(){
 function nextSeatCW(cur){ var o=cwOrder(), p=o.indexOf(cur); return o[(p+1)%o.length]; }
 
 /* ---------- layout ---------- */
+var STACK2={cols:1,rows:2,rot:[180,0],corner:["tr","br"]};
 function layoutFor(){
   if(st.layout==="pinwheel" && st.n===4) return PINWHEEL4;
+  if(st.n===2 && window.innerHeight>window.innerWidth) return STACK2;   /* portrait: one above the other */
   return LAYOUTS[st.n];
 }
 
@@ -425,6 +436,7 @@ function build(){
   var portrait=window.innerHeight>window.innerWidth;
   var cols=L.cols, rows=L.rows;
   if(portrait && st.n<=3 && st.layout!=="pinwheel"){ cols=1; rows=st.n; }
+  document.body.classList.toggle("two", L.cols===2 && st.n===2);
   grid.style.gridTemplateColumns="repeat("+cols+",1fr)";
   grid.style.gridTemplateRows="repeat("+rows+",1fr)";
   grid.innerHTML="";
@@ -500,42 +512,69 @@ function makeQ(i,L){
   // bottom bar (near the player): quick buttons
   var bar=document.createElement("div"); bar.className="qbot";
   bar.appendChild(dannoBtn(i));
-  bar.appendChild(qbtn("TASSA",function(){ openTax(i); }, (pl.counters.tax? pl.counters.tax : null)));
-  bar.appendChild(qbtn("SEGN.",function(){ openCounters(i); }));
-  var manaBtn=qbtn("MANA",function(){ toggleQM(); });
-  bar.appendChild(manaBtn);
+  var taxBtn=qbtn("TASSA",function(){ toggleQP("tax"); });
+  var segBtn=qbtn("SEGN.",function(){ toggleQP("seg"); });
+  var manaBtn=qbtn("MANA",function(){ toggleQP("mana"); });
+  bar.appendChild(taxBtn); bar.appendChild(segBtn); bar.appendChild(manaBtn);
   var mrow=document.createElement("div"); mrow.className="manarow";
-  var mpanel=null;
-  function toggleQM(){ if(mpanel) closeQM(); else openQM(); }
-  function closeQM(){ if(mpanel){ mpanel.remove(); mpanel=null; } delete qmOpen[i]; render(); save(); }
-  function openQM(){
-    qmOpen[i]=1;
+  var mpanel=null, mkind=null;
+
+  /* what each in-quad panel shows: a list of {key, icon, get, add(d)} plus header actions */
+  function qpSpec(kind){
+    pl.mana=pl.mana||{}; pl.custom=pl.custom||[];
+    if(kind==="mana") return { title:"MANA", total:true,
+      items:MANA.map(function(m){ return {key:m[0], icon:manaIcon(m[0]), step:1,
+        get:function(){ return pl.mana[m[0]]||0; }, set:function(v){ pl.mana[m[0]]=Math.max(0,v); }}; }),
+      actions:[["SVUOTA",function(){ clearMana(pl); }]] };
+    if(kind==="tax") return { title:"TASSA",
+      items:[{key:"tax", icon:counterIcon("tax"), step:2,
+        get:function(){ return pl.counters.tax||0; }, set:function(v){ pl.counters.tax=Math.max(0,v); }}],
+      actions:[["AZZERA",function(){ pl.counters.tax=0; }]] };
+    var items=CATALOG.filter(function(c){ return c.k!=="tax"; }).map(function(c){ return {key:c.k, icon:counterIcon(c.k), step:1, lethal:c.lethal,
+      get:function(){ return pl.counters[c.k]||0; }, set:function(v){ pl.counters[c.k]=Math.max(0,v); }}; });
+    pl.custom.forEach(function(cu){ items.push({key:"c:"+cu.name, icon:counterIcon(null,cu.name), step:1,
+      get:function(){ return cu.value; }, set:function(v){ cu.value=v; }}); });
+    return { title:"", items:items,
+      actions:[["NUOVO",function(){ var nm=prompt("Nome contatore:"); if(nm&&nm.trim()){ pl.custom.push({name:nm.trim(),value:0}); return "rebuild"; } }],
+               ["AZZERA",function(){ pl.counters=pl.counters.tax?{tax:pl.counters.tax}:{}; pl.custom.forEach(function(cu){ cu.value=0; }); }]] };
+  }
+  function toggleQP(kind){ if(mpanel && mkind===kind) closeQP(); else openQP(kind); }
+  function closeQP(){ if(mpanel){ mpanel.remove(); mpanel=null; mkind=null; } delete qmOpen[i]; render(); save(); }
+  function openQP(kind){
+    if(mpanel){ mpanel.remove(); mpanel=null; }
+    qmOpen[i]=kind; mkind=kind;
+    var spec=qpSpec(kind);
     mpanel=document.createElement("div"); mpanel.className="mpanel";
     ["click","touchstart","mousedown"].forEach(function(ev){ mpanel.addEventListener(ev,function(e){ e.stopPropagation(); },{passive:true}); });
     var hd=document.createElement("div"); hd.className="mph";
-    var tt=document.createElement("span");
-    var clr=document.createElement("button"); clr.textContent="SVUOTA";
+    var tt=document.createElement("span"); hd.appendChild(tt);
+    spec.actions.forEach(function(ac){
+      var bt=document.createElement("button"); bt.textContent=ac[0];
+      bt.addEventListener("click",function(){ snap(); if(ac[1]()==="rebuild"){ save(); openQP(kind); return; } upd(); saveSoft(); });
+      hd.appendChild(bt);
+    });
     var x=document.createElement("button"); x.className="x"; x.textContent="✕";
-    clr.addEventListener("click",function(){ snap(); clearMana(pl); upd(); });
-    x.addEventListener("click",closeQM);
-    hd.appendChild(tt); hd.appendChild(clr); hd.appendChild(x);
+    x.addEventListener("click",closeQP); hd.appendChild(x);
     var cols=document.createElement("div"); cols.className="mpc";
-    var cells={};
-    MANA.forEach(function(m){
+    var ni=spec.items.length, c6=ni<=8?ni:Math.ceil(ni/2);   /* up to 8 in one row, then two balanced rows */
+    cols.style.setProperty("--n6",c6); cols.style.setProperty("--w6",Math.max(6,c6)); cols.style.setProperty("--n3",Math.min(ni,3));
+    var cells=[];
+    spec.items.forEach(function(it){
       var c=document.createElement("div"); c.className="mcol";
       var plus=document.createElement("button"), minus=document.createElement("button"), sym=document.createElement("div"), n=document.createElement("b");
       plus.textContent="+"; minus.textContent="–";
-      sym.className="ms"; sym.innerHTML=manaIcon(m[0]); sym.appendChild(n);
-      function add(d){ snap(); pl.mana=pl.mana||{}; pl.mana[m[0]]=Math.max(0,(pl.mana[m[0]]||0)+d); vib(10); upd(); saveSoft(); }
-      plus.addEventListener("click",function(){ add(1); });
-      sym.addEventListener("click",function(){ add(1); });
-      minus.addEventListener("click",function(){ add(-1); });
+      sym.className="ms"; sym.innerHTML=it.icon; sym.appendChild(n);
+      function add(d){ snap(); it.set(it.get()+d); vib(10); upd(); saveSoft(); }
+      plus.addEventListener("click",function(){ add(it.step); });
+      sym.addEventListener("click",function(){ add(it.step); });
+      minus.addEventListener("click",function(){ add(-it.step); });
       c.appendChild(plus); c.appendChild(sym); c.appendChild(minus);
-      cols.appendChild(c); cells[m[0]]={sym:sym,n:n};
+      cols.appendChild(c); cells.push({it:it,sym:sym,n:n});
     });
     function upd(){
-      var t=manaTotal(pl); tt.textContent="MANA"+(t?" "+t:"");
-      MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0, c=cells[m[0]]; c.n.textContent=v; c.sym.className="ms"+(v?"":" zero"); });
+      var t=0; cells.forEach(function(c){ var v=c.it.get(); t+=v; c.n.textContent=v;
+        c.sym.className="ms"+(v?"":" zero")+(c.it.lethal&&v>=c.it.lethal?" leth":""); });
+      tt.textContent=spec.title+(spec.total&&t?" "+t:"");
       render();
     }
     mpanel.appendChild(hd); mpanel.appendChild(cols);
@@ -552,21 +591,23 @@ function makeQ(i,L){
   var acc=0,at=null,dirty=false;
   function render(){
     life.textContent=pl.life;
-    pills.innerHTML="";
-    var poison=pl.counters.poison||0;
-    CATALOG.forEach(function(c){ if(c.k==="tax") return; var v=pl.counters[c.k]||0; if(v!==0) pill(pills,c.tag+" "+v, c.lethal&&v>=c.lethal); });
-    (pl.custom||[]).forEach(function(cu){ if(cu.value!==0) pill(pills, cu.name.toUpperCase()+" "+cu.value,false); });
-    var mt=manaTotal(pl);
-    manaBtn.innerHTML=(mt?'<i><span class="mtot">'+mt+'</span></i>':'')+"MANA";
-    mrow.style.display=mpanel?"none":"";
-    mrow.innerHTML="";
-    MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v<=0) return;
-      var d=document.createElement("div"); d.className="mp";
-      var ic=document.createElement("i"); ic.innerHTML=manaIcon(m[0]);
+    function chip(box,icon,v,kind,hot){
+      var d=document.createElement("div"); d.className="mp"+(hot?" hot":"");
+      var ic=document.createElement("i"); ic.innerHTML=icon;
       var n=document.createElement("b"); n.textContent=v;
       d.appendChild(ic); d.appendChild(n);
-      d.addEventListener("click",function(e){ e.stopPropagation(); openQM(); });
-      mrow.appendChild(d); });
+      d.addEventListener("click",function(e){ e.stopPropagation(); openQP(kind); });
+      box.appendChild(d);
+    }
+    function badge(btn,label,v){ btn.innerHTML=(v?'<i><span class="mtot">'+v+'</span></i>':'')+label; }
+    pills.innerHTML="";
+    CATALOG.forEach(function(c){ if(c.k==="tax") return; var v=pl.counters[c.k]||0; if(v!==0) chip(pills,counterIcon(c.k),v,"seg",c.lethal&&v>=c.lethal); });
+    (pl.custom||[]).forEach(function(cu){ if(cu.value!==0) chip(pills,counterIcon(null,cu.name),cu.value,"seg",false); });
+    mrow.innerHTML="";
+    MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v>0) chip(mrow,manaIcon(m[0]),v,"mana",false); });
+    mrow.style.display=pills.style.display=mpanel?"none":"";
+    var segN=pills.children.length;
+    badge(manaBtn,"MANA",manaTotal(pl)); badge(taxBtn,"TASSA",pl.counters.tax||0); badge(segBtn,"SEGN.",segN);
     // (commander damage is shown on the DANNO corner button)
     q.className=q.className.replace(" dead","");
     if(isDead(pl)) q.className+=" dead";
@@ -590,7 +631,7 @@ function makeQ(i,L){
     life.style.fontSize=Math.round(Math.min(h/2.6, w/2.4))+"px";
   };
   q._render=render; render();
-  if(qmOpen[i]) setTimeout(function(){ if(!mpanel && q.isConnected) openQM(); },0);  /* survive rebuilds */
+  if(qmOpen[i]) setTimeout(function(){ if(!mpanel && q.isConnected) openQP(qmOpen[i]); },0);  /* survive rebuilds */
   return q;
 }
 function pill(box,txt,hot){ var d=document.createElement("div"); d.className="pill"+(hot?" hot":""); d.textContent=txt; d.style.fontFamily="var(--pix)"; d.style.fontSize="1.35vh"; box.appendChild(d); return d; }
@@ -931,7 +972,7 @@ function openSettings(){
 
   g(sBody,"Come si usa");
   var tip=document.createElement("div"); tip.className="tip";
-  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; Nome / ingranaggio = contatori, danno comandante, sfondo, colore, rotazione<br>&bull; Corona = Monarch &nbsp;|&nbsp; DANNO / TASSA / SEGN. = pannelli rapidi &nbsp;|&nbsp; MANA = pannello dentro il riquadro, girato verso il giocatore<br>&bull; Pannello centrale: orologio (tap = statistiche), TURNO, DADI, STATS, &#8630; annulla, schermo intero, &#8942; menu<br>&bull; Il tempo parte al primo tocco di vita; si mette in pausa da Menu &rarr; Partita";
+  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; Nome / ingranaggio = contatori, danno comandante, sfondo, colore, rotazione<br>&bull; Corona = Monarch &nbsp;|&nbsp; DANNO = pannello danno comandante &nbsp;|&nbsp; TASSA / SEGN. / MANA = pannello dentro il riquadro, girato verso il giocatore (tocca il gettone = +1)<br>&bull; Pannello centrale: orologio (tap = statistiche), TURNO, DADI, STATS, &#8630; annulla, schermo intero, &#8942; menu<br>&bull; Il tempo parte al primo tocco di vita; si mette in pausa da Menu &rarr; Partita";
   sBody.appendChild(tip);
   var legal=document.createElement("div"); legal.className="tip"; legal.style.fontSize="12px"; legal.style.color="#888";
   legal.innerHTML="&copy; 2026 ryugon87-code &mdash; Commander Life. Tutti i diritti riservati.<br>"+
@@ -1142,9 +1183,18 @@ function openCounters(i){
 }
 /* mana tokens: hand-drawn pixel art on an 18x18 grid (outline, fill, shading, symbol) */
 var MANA_TOK={"edge":"M8 0h2v1h-2zM5 1h3v1h-3zM10 1h3v1h-3zM3 2h2v1h-2zM13 2h2v1h-2zM2 3h1v1h-1zM15 3h1v1h-1zM2 4h1v1h-1zM15 4h1v1h-1zM1 5h1v1h-1zM16 5h1v1h-1zM1 6h1v1h-1zM16 6h1v1h-1zM1 7h1v1h-1zM16 7h1v1h-1zM0 8h1v1h-1zM17 8h1v1h-1zM0 9h1v1h-1zM17 9h1v1h-1zM1 10h1v1h-1zM16 10h1v1h-1zM1 11h1v1h-1zM16 11h1v1h-1zM1 12h1v1h-1zM16 12h1v1h-1zM2 13h1v1h-1zM15 13h1v1h-1zM2 14h1v1h-1zM15 14h1v1h-1zM3 15h2v1h-2zM13 15h2v1h-2zM5 16h3v1h-3zM10 16h3v1h-3zM8 17h2v1h-2z","body":"M8 1h2v1h-2zM5 2h8v1h-8zM3 3h12v1h-12zM3 4h12v1h-12zM2 5h14v1h-14zM2 6h14v1h-14zM2 7h14v1h-14zM1 8h16v1h-16zM1 9h16v1h-16zM2 10h14v1h-14zM2 11h14v1h-14zM2 12h14v1h-14zM3 13h12v1h-12zM3 14h12v1h-12zM5 15h8v1h-8zM8 16h2v1h-2z","shade":"M16 9h1v1h-1zM15 10h1v1h-1zM14 11h2v1h-2zM13 12h3v1h-3zM12 13h3v1h-3zM11 14h4v1h-4zM10 15h3v1h-3zM9 16h1v1h-1z","hi":"M5 2h2v1h-2zM3 3h3v1h-3zM3 4h2v1h-2zM2 5h2v1h-2zM2 6h1v1h-1z","sym":{"W":"M8 3h2v1h-2zM4 4h1v1h-1zM8 4h2v1h-2zM13 4h1v1h-1zM5 5h1v1h-1zM12 5h1v1h-1zM7 6h4v1h-4zM6 7h6v1h-6zM3 8h2v1h-2zM6 8h6v1h-6zM13 8h2v1h-2zM3 9h2v1h-2zM6 9h6v1h-6zM13 9h2v1h-2zM6 10h6v1h-6zM7 11h4v1h-4zM5 12h1v1h-1zM12 12h1v1h-1zM4 13h1v1h-1zM8 13h2v1h-2zM13 13h1v1h-1zM8 14h2v1h-2z","U":"M8 3h1v1h-1zM8 4h2v1h-2zM7 5h3v1h-3zM7 6h4v1h-4zM6 7h5v1h-5zM6 8h6v1h-6zM5 9h7v1h-7zM5 10h2v1h-2zM8 10h5v1h-5zM5 11h2v1h-2zM8 11h5v1h-5zM5 12h3v1h-3zM9 12h4v1h-4zM6 13h6v1h-6zM7 14h4v1h-4z","B":"M6 3h6v1h-6zM5 4h8v1h-8zM4 5h10v1h-10zM4 6h10v1h-10zM4 7h1v1h-1zM8 7h2v1h-2zM13 7h1v1h-1zM4 8h1v1h-1zM8 8h2v1h-2zM13 8h1v1h-1zM4 9h4v1h-4zM10 9h4v1h-4zM5 10h3v1h-3zM10 10h3v1h-3zM6 11h6v1h-6zM6 12h1v1h-1zM8 12h2v1h-2zM11 12h1v1h-1zM6 13h6v1h-6zM7 14h1v1h-1zM10 14h1v1h-1z","R":"M8 3h1v1h-1zM7 4h2v1h-2zM12 4h1v1h-1zM7 5h3v1h-3zM12 5h2v1h-2zM6 6h4v1h-4zM11 6h3v1h-3zM5 7h9v1h-9zM5 8h4v1h-4zM10 8h4v1h-4zM4 9h4v1h-4zM11 9h3v1h-3zM4 10h3v1h-3zM12 10h2v1h-2zM4 11h3v1h-3zM9 11h1v1h-1zM12 11h2v1h-2zM4 12h4v1h-4zM9 12h1v1h-1zM11 12h3v1h-3zM5 13h8v1h-8zM6 14h6v1h-6z","G":"M7 3h4v1h-4zM5 4h8v1h-8zM4 5h10v1h-10zM3 6h12v1h-12zM3 7h12v1h-12zM4 8h10v1h-10zM5 9h3v1h-3zM10 9h3v1h-3zM8 10h2v1h-2zM8 11h2v1h-2zM8 12h2v1h-2zM6 13h6v1h-6zM5 14h2v1h-2zM8 14h2v1h-2zM11 14h2v1h-2z","C":"M8 3h2v1h-2zM8 4h2v1h-2zM7 5h4v1h-4zM7 6h1v1h-1zM10 6h1v1h-1zM6 7h2v1h-2zM10 7h2v1h-2zM3 8h3v1h-3zM12 8h3v1h-3zM3 9h3v1h-3zM12 9h3v1h-3zM6 10h2v1h-2zM10 10h2v1h-2zM7 11h1v1h-1zM10 11h1v1h-1zM7 12h4v1h-4zM8 13h2v1h-2zM8 14h2v1h-2z"}};
-function manaIcon(k){ var c=MANA.filter(function(m){ return m[0]===k; })[0][2], t=MANA_TOK;
-  return '<svg viewBox="0 0 18 18" shape-rendering="crispEdges"><path fill="#151515" d="'+t.edge+'"/><path fill="'+c+'" d="'+t.body+'"/>'+
-    '<path fill="rgba(0,0,0,.18)" d="'+t.shade+'"/><path fill="rgba(255,255,255,.45)" d="'+t.hi+'"/><path fill="#151515" d="'+t.sym[k]+'"/></svg>'; }
+function tokenSvg(col,inner){ var t=MANA_TOK;
+  return '<svg viewBox="0 0 18 18" shape-rendering="crispEdges"><path fill="#151515" d="'+t.edge+'"/><path fill="'+col+'" d="'+t.body+'"/>'+
+    '<path fill="rgba(0,0,0,.18)" d="'+t.shade+'"/><path fill="rgba(255,255,255,.45)" d="'+t.hi+'"/>'+inner+'</svg>'; }
+function manaIcon(k){ var c=MANA.filter(function(m){ return m[0]===k; })[0][2]; return tokenSvg(c,'<path fill="#151515" d="'+MANA_TOK.sym[k]+'"/>'); }
+/* counter tokens: same 18x18 pixel coin, own symbol and colour; custom counters show their initials */
+var CNT_SYM={"poison":"M8 3h2v1h-2zM6 4h6v1h-6zM5 5h2v1h-2zM8 5h2v1h-2zM11 5h2v1h-2zM4 6h2v1h-2zM8 6h2v1h-2zM12 6h2v1h-2zM4 7h1v1h-1zM8 7h2v1h-2zM13 7h1v1h-1zM4 8h1v1h-1zM8 8h2v1h-2zM13 8h1v1h-1zM4 9h2v1h-2zM8 9h2v1h-2zM12 9h2v1h-2zM5 10h2v1h-2zM8 10h2v1h-2zM11 10h2v1h-2zM6 11h6v1h-6zM8 12h2v1h-2zM8 13h2v1h-2zM7 14h4v1h-4z","energy":"M9 3h4v1h-4zM8 4h4v1h-4zM7 5h4v1h-4zM6 6h4v1h-4zM5 7h7v1h-7zM4 8h7v1h-7zM7 9h4v1h-4zM6 10h4v1h-4zM6 11h3v1h-3zM5 12h3v1h-3zM5 13h2v1h-2zM4 14h2v1h-2z","exp":"M8 3h2v1h-2zM8 4h2v1h-2zM7 5h4v1h-4zM3 6h12v1h-12zM4 7h10v1h-10zM5 8h8v1h-8zM6 9h6v1h-6zM6 10h6v1h-6zM5 11h3v1h-3zM10 11h3v1h-3zM5 12h2v1h-2zM11 12h2v1h-2zM4 13h2v1h-2zM12 13h2v1h-2z","rad":"M4 3h2v1h-2zM12 3h2v1h-2zM4 4h3v1h-3zM11 4h3v1h-3zM4 5h4v1h-4zM10 5h4v1h-4zM5 6h3v1h-3zM10 6h3v1h-3zM6 7h1v1h-1zM8 7h2v1h-2zM11 7h1v1h-1zM7 8h4v1h-4zM7 9h4v1h-4zM8 10h2v1h-2zM7 11h4v1h-4zM6 12h6v1h-6zM6 13h6v1h-6zM7 14h4v1h-4z","storm":"M3 3h12v1h-12zM4 4h10v1h-10zM5 5h8v1h-8zM6 6h6v1h-6zM7 7h5v1h-5zM8 8h4v1h-4zM8 9h3v1h-3zM7 10h3v1h-3zM7 11h2v1h-2zM8 12h2v1h-2zM9 13h1v1h-1z","ticket":"M3 5h12v1h-12zM3 6h2v1h-2zM7 6h4v1h-4zM13 6h2v1h-2zM3 7h1v1h-1zM14 7h1v1h-1zM6 8h6v1h-6zM6 9h6v1h-6zM3 10h1v1h-1zM14 10h1v1h-1zM3 11h2v1h-2zM7 11h4v1h-4zM13 11h2v1h-2zM3 12h12v1h-12z","tax":"M3 5h1v1h-1zM8 5h2v1h-2zM14 5h1v1h-1zM3 6h2v1h-2zM7 6h4v1h-4zM13 6h2v1h-2zM3 7h12v1h-12zM3 8h12v1h-12zM3 9h12v1h-12zM4 10h10v1h-10zM4 12h10v1h-10zM4 13h10v1h-10z"};
+var CNT_COL={poison:"#a5d66f",energy:"#ffd54f",exp:"#d4a5e8",rad:"#ffb066",storm:"#9fc9f5",ticket:"#f5a3c4",tax:"#e8c46a"};
+function counterIcon(k,label){
+  if(CNT_SYM[k]) return tokenSvg(CNT_COL[k],'<path fill="#151515" d="'+CNT_SYM[k]+'"/>');
+  var ini=String(label||"?").replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
+  return tokenSvg("#cfcfcf",'<text x="9" y="12.2" text-anchor="middle" font-family="PixFont,monospace" font-size="'+(ini.length>1?6.5:8)+'" fill="#151515">'+ini+'</text>');
+}
 var MANA=[["W","Bianco","#f8e7b9"],["U","Blu","#a9d5f5"],["B","Nero","#b0a7b8"],["R","Rosso","#f5a9a0"],["G","Verde","#a9e0b8"],["C","Incolore","#d8d8d8"]];
 function manaTotal(pl){ var t=0, m=pl.mana||{}; for(var k in m) t+=m[k]||0; return t; }
 function clearMana(pl){ pl.mana={}; }
