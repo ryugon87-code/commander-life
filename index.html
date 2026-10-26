@@ -865,6 +865,12 @@ function openSettings(){
   var tip=document.createElement("div"); tip.className="tip";
   tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; Nome / ingranaggio = contatori, danno comandante, sfondo, colore, rotazione<br>&bull; Corona = Monarch &nbsp;|&nbsp; DANNO / TASSA / SEGN. / MANA = pannelli rapidi<br>&bull; Pannello centrale: orologio (tap = statistiche), TURNO, DADI, STATS, &#8630; annulla, schermo intero, &#8942; menu<br>&bull; Il tempo parte al primo tocco di vita; si mette in pausa da Menu &rarr; Partita";
   sBody.appendChild(tip);
+  var legal=document.createElement("div"); legal.className="tip"; legal.style.fontSize="12px"; legal.style.color="#888";
+  legal.innerHTML="&copy; 2026 ryugon87-code &mdash; Commander Life. Tutti i diritti riservati.<br>"+
+    "Commander Life &egrave; Fan Content non ufficiale consentito dalla Fan Content Policy. Non approvato n&eacute; sponsorizzato da Wizards of the Coast. "+
+    "Parte dei materiali utilizzati &egrave; propriet&agrave; di Wizards of the Coast. &copy; Wizards of the Coast LLC.<br>"+
+    "Immagini delle carte: Scryfall. Simboli del mana: font &laquo;Mana&raquo; di Andrew Gioia (SIL OFL 1.1).";
+  sBody.appendChild(legal);
   sSheet.className="sheet on";
 }
 function toggleRow(label,get,set){
