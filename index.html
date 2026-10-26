@@ -83,7 +83,7 @@
   .mcol .ms.zero svg{opacity:.4;}
 
   .qbot{position:absolute;left:5%;right:5%;bottom:3%;display:flex;gap:4px;justify-content:center;align-items:flex-end;flex-wrap:wrap;z-index:8;}
-  .qb{font-family:var(--pix);font-size:10px;color:rgba(255,255,255,.92);background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 8px;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:4px;white-space:nowrap;}
+  .qb{font-family:var(--pix);font-size:9px;color:rgba(255,255,255,.92);background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 6px;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:3px;white-space:nowrap;}
   .qb:active{background:rgba(0,0,0,.85);transform:scale(.93);}
   .qb i{font-style:normal;font-size:11px;color:#fff;}
   .pname{font-family:var(--pix);font-size:10px;color:#fff;background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 9px;max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em;}
@@ -521,7 +521,7 @@ function makeQ(i,L){
   var bar=document.createElement("div"); bar.className="qbot";
   bar.appendChild(dannoBtn(i));
   var taxBtn=qbtn("TASSA",function(){ openPanel(i,"tax"); });
-  var segBtn=qbtn("SEGN.",function(){ openPanel(i,"seg"); });
+  var segBtn=qbtn("SEGNALINI",function(){ openPanel(i,"seg"); });
   var manaBtn=qbtn("MANA",function(){ openPanel(i,"mana"); });
   bar.appendChild(taxBtn); bar.appendChild(segBtn); bar.appendChild(manaBtn);
   var mrow=document.createElement("div"); mrow.className="manarow";
@@ -551,7 +551,7 @@ function makeQ(i,L){
     mrow.innerHTML="";
     MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v>0) chip(mrow,manaIcon(m[0]),v,"mana",false); });
     var segN=pills.children.length;
-    badge(manaBtn,"MANA",manaTotal(pl)); badge(taxBtn,"TASSA",pl.counters.tax||0); badge(segBtn,"SEGN.",segN);
+    badge(manaBtn,"MANA",manaTotal(pl)); badge(taxBtn,"TASSA",pl.counters.tax||0); badge(segBtn,"SEGNALINI",segN);
     // (commander damage is shown on the DANNO corner button)
     q.className=q.className.replace(" dead","");
     if(isDead(pl)) q.className+=" dead";
@@ -638,7 +638,7 @@ function drawPanel(){
   nm.appendChild(dot); nm.appendChild(nt); nm.appendChild(x);
   /* row 2: tabs */
   var tabs=document.createElement("div"); tabs.className="mph";
-  [["dmg","DANNO"],["tax","TASSA"],["seg","SEGN."],["mana","MANA"]].forEach(function(tb){
+  [["dmg","DANNO"],["tax","TASSA"],["seg","SEGNALINI"],["mana","MANA"]].forEach(function(tb){
     var b=document.createElement("button"); b.textContent=tb[1]; if(tb[0]===kind) b.className="on";
     b.addEventListener("click",function(){ qpOpen.kind=tb[0]; drawPanel(); }); tabs.appendChild(b);
   });
@@ -1010,7 +1010,7 @@ function openSettings(){
 
   g(sBody,"Come si usa");
   var tip=document.createElement("div"); tip.className="tip";
-  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; DANNO / TASSA / SEGN. / MANA = pannello del giocatore al centro, girato verso di lui (tocca il gettone = +1)<br>&bull; Nome / ingranaggio = scheda completa: contatori, partner, sfondo, colore, rotazione<br>&bull; Corona = Monarch<br>&bull; Pannello centrale: orologio (tap = pausa / riprendi), TURNO, DADI, &#8630; annulla, schermo intero, &#8942; menu";
+  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; DANNO / TASSA / SEGNALINI / MANA = pannello del giocatore al centro, girato verso di lui (tocca il gettone = +1)<br>&bull; Nome / ingranaggio = scheda completa: contatori, partner, sfondo, colore, rotazione<br>&bull; Corona = Monarch<br>&bull; Pannello centrale: orologio (tap = pausa / riprendi), TURNO, DADI, &#8630; annulla, schermo intero, &#8942; menu";
   sBody.appendChild(tip);
   var legal=document.createElement("div"); legal.className="tip"; legal.style.fontSize="12px"; legal.style.color="#888";
   legal.innerHTML="&copy; 2026 ryugon87-code &mdash; Commander Life. Tutti i diritti riservati.<br>"+
