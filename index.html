@@ -301,7 +301,7 @@ var GRADS=[
  "linear-gradient(135deg,#005c97,#363795)","linear-gradient(135deg,#3a1c71,#d76d77,#ffaf7b)"
 ];
 var CATALOG=[
-  {k:"poison",label:"Veleno (10 = morte)",tag:"VELENO",lethal:10},
+  {k:"poison",label:"Veleno",tag:"VELENO",lethal:10},
   {k:"energy",label:"Energy",tag:"ENERGY"},
   {k:"exp",label:"Experience",tag:"EXP"},
   {k:"rad",label:"Rad",tag:"RAD"},
@@ -376,7 +376,8 @@ function vib(ms){ if(st.vibrate && navigator.vibrate){ try{ navigator.vibrate(ms
 
 /* ---------- helpers ---------- */
 function maxCmdDmg(pl){ var m=0; for(var k in pl.cmdDmg){ if(pl.cmdDmg[k]>m) m=pl.cmdDmg[k]; } return m; }
-function isDead(pl){ return pl.life<=0 || maxCmdDmg(pl)>=21 || (pl.counters.poison||0)>=10; }
+/* 10 poison is only flagged (red), never an automatic OUT: some effects keep a player alive */
+function isDead(pl){ return pl.life<=0 || maxCmdDmg(pl)>=21; }
 function setCmdrCount(pi,count){
   snap();
   var opp=st.p[pi];
