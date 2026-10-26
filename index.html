@@ -15,7 +15,9 @@
 <style>
   :root{--pix:"PixFont","Press Start 2P",monospace;}
   *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;user-select:none;}
-  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:-apple-system,"Roboto","Segoe UI",Arial,sans-serif;touch-action:manipulation;color:#fff;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:var(--pix);touch-action:manipulation;color:#fff;}
+  /* one typeface everywhere: form controls do not inherit it by default */
+  input,button,textarea,select{font-family:inherit;}
 
   #grid{position:absolute;inset:0;display:grid;gap:8px;padding:8px;background:#000;}
   .q{position:relative;overflow:hidden;border-radius:22px;background:#444;transition:box-shadow .2s;}
@@ -128,13 +130,13 @@
   .sheet .hd h2{font-size:13px;flex:1;font-family:var(--pix);}
   .sheet .hd button{background:#c62828;border:0;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:800;font-family:var(--pix);}
   .sheet .bd{flex:1;overflow-y:auto;padding:12px 16px 60px;}
-  .grp{margin:16px 0 4px;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#888;}
+  .grp{margin:16px 0 4px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#888;}
   .orow{display:flex;align-items:center;gap:10px;width:100%;max-width:720px;margin:6px 0;background:#161616;border-radius:10px;padding:9px 12px;}
-  .orow .lbl{flex:1;font-size:15px;}
+  .orow .lbl{flex:1;font-size:12px;line-height:1.5;}
   .orow .val{font-size:22px;font-weight:800;min-width:44px;text-align:center;}
   .orow button{width:50px;height:50px;border:0;border-radius:8px;background:#333;color:#fff;font-size:24px;font-weight:800;flex:none;}
   .orow button:active{background:#555;}
-  .orow input[type=text]{flex:1;background:#0c0c0c;border:1px solid #333;color:#fff;border-radius:8px;padding:10px;font-size:15px;}
+  .orow input[type=text]{flex:1;background:#0c0c0c;border:1px solid #333;color:#fff;border-radius:8px;padding:10px;font-size:13px;}
   .chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0;}
   .chip{background:#222;border:1px solid #333;border-radius:16px;padding:9px 15px;font-family:var(--pix);font-size:11px;}
   .chip.sel{background:#3d6bff;border-color:#3d6bff;}
@@ -144,7 +146,7 @@
   .grad.sel{border-color:#fff;}
   .btn{display:inline-block;background:#2a2a2a;border:1px solid #3a3a3a;border-radius:10px;padding:12px 16px;font-family:var(--pix);font-size:11px;margin:5px 6px 0 0;}
   .btn:active{background:#3a3a3a;} .btn.danger{background:#7a1c1c;border-color:#a33;}
-  .tip{background:#141414;border-radius:10px;padding:12px 14px;font-size:14px;line-height:1.6;color:#bbb;margin-top:6px;}
+  .tip{background:#141414;border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.9;color:#bbb;margin-top:6px;}
 
   #dice{align-items:center;justify-content:center;text-align:center;}
   #dieStage{position:relative;width:100%;height:40vh;display:flex;align-items:center;justify-content:center;margin-bottom:2vh;}
@@ -167,10 +169,10 @@
 
   .cardItem{border-radius:9px;overflow:hidden;background:#161616;border:1px solid #2a2a2a;}
   .cardItem .thumb{width:100%;height:92px;background-size:cover;background-position:center;background-color:#222;}
-  .cardItem .cn{font-size:11px;padding:6px 7px;line-height:1.25;color:#ddd;}
+  .cardItem .cn{font-size:9px;padding:6px 7px;line-height:1.5;color:#ddd;}
   .cardItem:active{border-color:#3d6bff;}
 
-  #toast{pointer-events:none;position:absolute;left:50%;bottom:46px;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:9px 16px;border-radius:8px;font-size:14px;z-index:60;opacity:0;transition:opacity .3s;text-align:center;max-width:80%;}
+  #toast{pointer-events:none;position:absolute;left:50%;bottom:46px;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:9px 16px;border-radius:8px;font-size:12px;line-height:1.5;z-index:60;opacity:0;transition:opacity .3s;text-align:center;max-width:80%;}
   #toast.show{opacity:1;}
   input[type=file]{display:none;}
 </style>
@@ -221,7 +223,7 @@
 </div>
 
 <div class="sheet" id="cards"><div class="hd"><h2>Scegli una carta</h2><button id="cardsClose">Chiudi</button></div>
-  <div style="padding:10px 16px 0"><input type="text" id="cardSearch" placeholder="Cerca comandante..." style="width:100%;background:#0c0c0c;border:1px solid #333;color:#fff;border-radius:8px;padding:11px;font-size:15px"></div>
+  <div style="padding:10px 16px 0"><input type="text" id="cardSearch" placeholder="Cerca comandante..." style="width:100%;background:#0c0c0c;border:1px solid #333;color:#fff;border-radius:8px;padding:11px;font-size:13px"></div>
   <div class="bd"><div id="cardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px"></div></div>
 </div>
 
@@ -232,7 +234,7 @@
       <span class="btn" id="camShot">Scatta</span>
       <span class="btn" id="camFlip">Cambia camera</span>
     </div>
-    <div id="camErr" style="color:#f88;font-size:14px;text-align:center;max-width:480px"></div>
+    <div id="camErr" style="color:#f88;font-size:12px;text-align:center;max-width:480px"></div>
   </div>
 </div>
 
@@ -617,7 +619,7 @@ function qpSpec(i,kind){
     get:function(){ return cu.value; }, set:function(v){ cu.value=v; }}); });
   return { items:items,
     actions:[["+ NUOVO",function(){ var nm=prompt("Nome contatore:"); if(nm&&nm.trim()){ pl.custom.push({name:nm.trim(),value:0}); return "redraw"; } }],
-             ["AZZERA",function(){ pl.counters=pl.counters.tax?{tax:pl.counters.tax}:{}; pl.custom.forEach(function(cu){ cu.value=0; }); }]] };
+             ["AZZERA",function(){ pl.counters=pl.counters.tax?{tax:pl.counters.tax}:{}; pl.custom=[]; return "redraw"; }]] };
 }
 function openPanel(i,kind){ qpOpen={i:i,kind:kind}; drawPanel(); }
 function closePanel(){ qpOpen=null; qpEl.className=""; qpEl.innerHTML=""; save(); build(); }
@@ -794,7 +796,7 @@ var camSheet=document.getElementById("cam"), camVid=document.getElementById("cam
     camErr=document.getElementById("camErr"), camStream=null, camTarget=-1, camFacing="environment";
 function stopCam(){ try{ if(camStream){ camStream.getTracks().forEach(function(t){ t.stop(); }); } }catch(e){} camStream=null; try{ camVid.srcObject=null; }catch(e){} }
 document.getElementById("camClose").addEventListener("click",function(){ stopCam(); camSheet.className="sheet"; });
-function openCam(i){ camTarget=i; camErr.textContent=""; camSheet.className="sheet on"; startCam(); }
+function openCam(i){ camTarget=i; camErr.textContent=""; orient(camSheet,effRot(i,layoutFor())); camSheet.className="sheet on"; startCam(); }
 function startCam(){
   stopCam();
   var md=navigator.mediaDevices;
@@ -816,87 +818,29 @@ document.getElementById("camShot").addEventListener("click",function(){
   if(data){ bgCache[i]=data; idbSet("p"+i,data); st.p[i].bg={type:"img"}; save(); openPlayer(i); toast("Sfondo aggiornato"); }
 });
 
-function stepRow(label,get,set,step){
-  step=step||1;
-  var r=document.createElement("div"); r.className="orow";
-  var l=document.createElement("div"); l.className="lbl"; l.textContent=label;
-  var m=document.createElement("button"); m.textContent="–";
-  var v=document.createElement("div"); v.className="val"; v.textContent=get();
-  var p=document.createElement("button"); p.textContent="+";
-  m.addEventListener("click",function(){ set(get()-step); v.textContent=get(); save(); });
-  p.addEventListener("click",function(){ set(get()+step); v.textContent=get(); save(); });
-  r.appendChild(l); r.appendChild(m); r.appendChild(v); r.appendChild(p);
-  return r;
-}
 function g(host,t){ var d=document.createElement("div"); d.className="grp"; d.textContent=t; host.appendChild(d); }
 
+/* turn a full-screen sheet toward a player (same rotation as their quad); quarter turns swap its box */
+var sheetRot=0;
+function orient(el,rot){
+  rot=rot||0;
+  el.style.transform=rot?"rotate("+rot+"deg)":"";
+  if(rot===90||rot===270){ var w=window.innerWidth, h=window.innerHeight;
+    el.style.inset="auto"; el.style.width=h+"px"; el.style.height=w+"px"; el.style.left=((w-h)/2)+"px"; el.style.top=((h-w)/2)+"px"; }
+  else { el.style.inset=el.style.width=el.style.height=el.style.left=el.style.top=""; }
+}
 function openPlayer(i){
+  sheetRot=effRot(i,layoutFor()); orient(pSheet,sheetRot);
   var pl=st.p[i];
   pTitle.textContent=pl.name; pBody.innerHTML="";
 
-  g(pBody,"Vita");
-  pBody.appendChild(stepRow("Punti vita",function(){return pl.life;},function(x){ snap(); pl.life=x; },1));
-  var qq=document.createElement("div");
-  [-10,-5,-1,1,5,10].forEach(function(n){ var b=document.createElement("div"); b.className="btn"; b.textContent=(n>0?"+":"")+n;
-    b.addEventListener("click",function(){ snap(); pl.life+=n; save(); openPlayer(i); }); qq.appendChild(b); });
-  pBody.appendChild(qq);
-
-  g(pBody,"Contatori");
-  CATALOG.forEach(function(c){ pBody.appendChild(stepRow(c.label,function(){return pl.counters[c.k]||0;},function(x){ snap(); pl.counters[c.k]=Math.max(0,x); },1)); });
-  (pl.custom||[]).forEach(function(cu,idx){
-    var row=stepRow(cu.name,function(){return cu.value;},function(x){ snap(); cu.value=x; },1);
-    var del=document.createElement("button"); del.textContent="×"; del.style.background="#7a1c1c";
-    del.addEventListener("click",function(){ snap(); pl.custom.splice(idx,1); save(); openPlayer(i); });
-    row.appendChild(del); pBody.appendChild(row);
-  });
-  var addBtn=document.createElement("div"); addBtn.className="btn"; addBtn.textContent="+ contatore";
-  addBtn.addEventListener("click",function(){ var nm=prompt("Nome contatore:"); if(nm){ pl.custom=pl.custom||[]; pl.custom.push({name:nm.trim(),value:0}); save(); openPlayer(i); } });
-  pBody.appendChild(addBtn);
-
-  g(pBody,"I comandanti di "+pl.name);
-  pBody.appendChild(toggleRow("Ho 2 comandanti (partner)",
-    function(){ return (pl.cmdrs||[]).length>=2; },
-    function(v){ setCmdrCount(i,v?2:1); }));
-  (pl.cmdrs||[]).forEach(function(cm,slot){
-    var r=document.createElement("div"); r.className="orow";
-    var ci=document.createElement("input"); ci.type="text"; ci.value=cm.name; ci.placeholder="Nome comandante "+(slot+1);
-    ci.addEventListener("change",function(){ cm.name=ci.value.trim()||("Comandante "+(slot+1)); save(); build(); });
-    var pc=document.createElement("button"); pc.textContent="carta"; pc.style.width="72px"; pc.style.fontSize="11px"; pc.style.fontFamily="var(--pix)";
-    pc.addEventListener("click",function(){ pickCard(function(card){ cm.name=card.name; cm.art=card.file; cm.arturl=card.url; save(); openPlayer(i); }); });
-    r.appendChild(ci); r.appendChild(pc);
-    pBody.appendChild(r);
-  });
-
-  g(pBody,"Danno da comandante ricevuto da "+pl.name+" (21 da un comandante = morte, toglie anche vita)");
-  for(var k=0;k<st.n;k++){ if(k===i) continue; (function(k){
-    var opp=st.p[k], two=(opp.cmdrs||[]).length>=2;
-    // opponent header + quick split toggle
-    var hr=document.createElement("div"); hr.className="orow";
-    var hl=document.createElement("div"); hl.className="lbl"; hl.textContent=opp.name; hl.style.fontWeight="800"; hl.style.fontFamily="var(--pix)"; hl.style.fontSize="12px";
-    var tg=document.createElement("button"); tg.style.width="150px"; tg.style.fontSize="10px"; tg.style.fontFamily="var(--pix)";
-    tg.textContent = two ? "2 COMANDANTI" : "1 COMANDANTE";
-    tg.style.background = two ? "#3d6bff" : "#333";
-    tg.addEventListener("click",function(){ setCmdrCount(k,two?1:2); openPlayer(i); });
-    hr.appendChild(hl); hr.appendChild(tg); pBody.appendChild(hr);
-    if(!two){
-      pBody.appendChild(stepRow("danni inflitti",
-        function(){ return pl.cmdDmg[k+"|0"]||0; },
-        function(x){ snap(); x=Math.max(0,x); var d=x-(pl.cmdDmg[k+"|0"]||0); pl.cmdDmg[k+"|0"]=x; pl.life-=d; },1));
-    } else {
-      [0,1].forEach(function(slot){
-        var cn=(opp.cmdrs[slot]&&opp.cmdrs[slot].name)||("Comandante "+(slot+1));
-        pBody.appendChild(stepRow(cn,
-          function(){ return pl.cmdDmg[k+"|"+slot]||0; },
-          function(x){ snap(); x=Math.max(0,x); var d=x-(pl.cmdDmg[k+"|"+slot]||0); pl.cmdDmg[k+"|"+slot]=x; pl.life-=d; },1));
-      });
-    }
-  })(k); }
-
-  g(pBody,"Aspetto");
+  g(pBody,"Nome");
   var nameRow=document.createElement("div"); nameRow.className="orow";
   var ni=document.createElement("input"); ni.type="text"; ni.value=pl.name;
   ni.addEventListener("change",function(){ pl.name=ni.value.trim()||pl.name; pTitle.textContent=pl.name; save(); });
   nameRow.appendChild(ni); pBody.appendChild(nameRow);
+
+  g(pBody,"Aspetto");
   var sw=document.createElement("div"); sw.className="chips";
   COLORS.forEach(function(c){ var s=document.createElement("div"); s.className="swatch"+((pl.bg.type==="solid"&&pl.color===c)?" sel":""); s.style.background=c;
     s.addEventListener("click",function(){ pl.color=c; pl.bg={type:"solid"}; save(); openPlayer(i); }); sw.appendChild(s); });
@@ -925,6 +869,20 @@ function openPlayer(i){
     pBody.appendChild(rm);
   }
 
+  g(pBody,"Comandanti");
+  pBody.appendChild(toggleRow("Ho 2 comandanti (partner)",
+    function(){ return (pl.cmdrs||[]).length>=2; },
+    function(v){ setCmdrCount(i,v?2:1); openPlayer(i); }));
+  (pl.cmdrs||[]).forEach(function(cm,slot){
+    var r=document.createElement("div"); r.className="orow";
+    var ci=document.createElement("input"); ci.type="text"; ci.value=cm.name; ci.placeholder="Nome comandante "+(slot+1);
+    ci.addEventListener("change",function(){ cm.name=ci.value.trim()||("Comandante "+(slot+1)); save(); build(); });
+    var pc=document.createElement("button"); pc.textContent="carta"; pc.style.width="72px"; pc.style.fontSize="11px"; pc.style.fontFamily="var(--pix)";
+    pc.addEventListener("click",function(){ pickCard(function(card){ cm.name=card.name; cm.art=card.file; cm.arturl=card.url; save(); openPlayer(i); }); });
+    r.appendChild(ci); r.appendChild(pc);
+    pBody.appendChild(r);
+  });
+
   g(pBody,"Rotazione riquadro");
   var rr=document.createElement("div"); rr.className="chips";
   [["auto",null],["0",0],["90",90],["180",180],["270",270]].forEach(function(o){
@@ -933,10 +891,6 @@ function openPlayer(i){
   });
   pBody.appendChild(rr);
 
-  g(pBody,"");
-  var resetP=document.createElement("div"); resetP.className="btn danger"; resetP.textContent="Azzera questo giocatore";
-  resetP.addEventListener("click",function(){ if(confirm("Azzerare "+pl.name+"?")){ snap(); pl.life=st.start; pl.counters={}; pl.custom=[]; pl.mana={}; pl.cmdDmg={}; save(); openPlayer(i); } });
-  pBody.appendChild(resetP);
   pSheet.className="sheet on";
 }
 
@@ -1010,9 +964,9 @@ function openSettings(){
 
   g(sBody,"Come si usa");
   var tip=document.createElement("div"); tip.className="tip";
-  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; DANNO / TASSA / SEGNALINI / MANA = pannello del giocatore al centro, girato verso di lui (tocca il gettone = +1)<br>&bull; Nome / ingranaggio = scheda completa: contatori, partner, sfondo, colore, rotazione<br>&bull; Corona = Monarch<br>&bull; Pannello centrale: orologio (tap = pausa / riprendi), TURNO, DADI, &#8630; annulla, schermo intero, &#8942; menu";
+  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; DANNO / TASSA / SEGNALINI / MANA = pannello del giocatore al centro, girato verso di lui (tocca il gettone = +1)<br>&bull; Nome / ingranaggio = personalizza: nome, colore e sfondo, comandanti, rotazione<br>&bull; Corona = Monarch<br>&bull; Pannello centrale: orologio (tap = pausa / riprendi), TURNO, DADI, &#8630; annulla, schermo intero, &#8942; menu";
   sBody.appendChild(tip);
-  var legal=document.createElement("div"); legal.className="tip"; legal.style.fontSize="12px"; legal.style.color="#888";
+  var legal=document.createElement("div"); legal.className="tip"; legal.style.fontSize="9px"; legal.style.color="#888";
   legal.innerHTML="&copy; 2026 ryugon87-code &mdash; Commander Life. Tutti i diritti riservati.<br>"+
     "Commander Life &egrave; Fan Content non ufficiale consentito dalla Fan Content Policy. Non approvato n&eacute; sponsorizzato da Wizards of the Coast. "+
     "Parte dei materiali utilizzati &egrave; propriet&agrave; di Wizards of the Coast. &copy; Wizards of the Coast LLC.<br>"+
@@ -1144,6 +1098,7 @@ var cardsSheet=document.getElementById("cards"), cardGrid=document.getElementByI
 document.getElementById("cardsClose").addEventListener("click",function(){ cardsSheet.className="sheet"; });
 function pickCard(cb){
   cardCb=cb; cardSearch.value=""; renderCards("");
+  orient(cardsSheet,pSheet.className.indexOf(" on")>=0?sheetRot:0);   /* picked from a player's sheet: face that player */
   cardsSheet.className="sheet on";
 }
 cardSearch.addEventListener("input",function(){ renderCards(cardSearch.value); });
@@ -1183,11 +1138,11 @@ function fuzzyScore(name,q){
 function renderCards(q){
   cardGrid.innerHTML="";
   if(cio && cio.disconnect) cio.disconnect();
-  if(!CARDS.length){ cardGrid.innerHTML='<div style="color:#888;font-size:14px;grid-column:1/-1">Catalogo carte non disponibile.</div>'; return; }
+  if(!CARDS.length){ cardGrid.innerHTML='<div style="color:#888;font-size:12px;grid-column:1/-1">Catalogo carte non disponibile.</div>'; return; }
   var scored=[];
   CARDS.forEach(function(c){ var sc=fuzzyScore(c.name,q); if(sc>0) scored.push({c:c,s:sc}); });
   scored.sort(function(a,b){ return b.s-a.s || a.c.name.localeCompare(b.c.name); });
-  if(!scored.length){ var nf=document.createElement("div"); nf.style.cssText="color:#888;font-size:14px;grid-column:1/-1"; nf.textContent='Nessun suggerimento per "'+q+'".'; cardGrid.appendChild(nf); return; }
+  if(!scored.length){ var nf=document.createElement("div"); nf.style.cssText="color:#888;font-size:12px;grid-column:1/-1"; nf.textContent='Nessun suggerimento per "'+q+'".'; cardGrid.appendChild(nf); return; }
   var mkIO = ("IntersectionObserver" in window);
   if(mkIO) cio=new IntersectionObserver(function(ents){ ents.forEach(function(en){ if(en.isIntersecting){ var t=en.target; t.style.backgroundImage="url("+t.getAttribute("data-src")+")"; cio.unobserve(t); } }); },{root:cardGrid.parentNode,rootMargin:"250px"});
   scored.slice(0,80).forEach(function(o){
