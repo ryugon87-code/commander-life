@@ -1,5 +1,5 @@
 /* Simple offline cache — only active when the page is served over http(s) */
-var CACHE = "commander-life-v22";
+var CACHE = "commander-life-v23";
 var ASSETS = [
   "./",
   "./index.html",

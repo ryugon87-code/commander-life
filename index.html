@@ -52,38 +52,38 @@
   .mp i,.mcol .ms{font-style:normal;display:flex;align-items:center;justify-content:center;}
   .mp i{width:3.4vh;height:3.4vh;min-width:24px;min-height:24px;}
   .mp i svg,.mcol .ms svg{width:100%;height:100%;display:block;}
-  .mp b{font-family:var(--pix);font-size:max(10px,1.6vh);color:#fff;font-weight:400;}
+  .mp b{font-family:var(--pix);font-size:12px;color:#fff;font-weight:400;}
   .qb .mtot{background:#ffd54a;color:#222;border-radius:6px;padding:1px 4px;}
   /* in-quad mana panel: lives inside the rotated frame, so it faces its player */
   /* player panel: one centred box, rotated toward its player */
   #qp{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.55);display:none;}
   #qp.on{display:block;}
-  .mpanel{position:absolute;left:50%;top:50%;background:#0d0d10;border:1px solid #3a3a3a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.7);display:flex;flex-direction:column;container-type:size;padding:2.5cqh 2.5cqw;gap:2.5cqh;}
-  .qpname{display:flex;align-items:center;gap:2.5cqw;height:12cqh;flex:none;}
-  .qpname i{width:clamp(12px,5cqh,22px);height:clamp(12px,5cqh,22px);border-radius:5px;flex:none;}
-  .qpname span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pix);font-size:clamp(11px,6.5cqh,22px);color:#fff;text-transform:uppercase;}
-  .qpname button.x{height:100%;min-width:48px;aspect-ratio:1.3;border:1px solid #ff8a80;border-radius:10px;background:#c62828;color:#fff;font-size:clamp(14px,6cqh,22px);}
+  /* panel sizes are px custom properties computed in drawPanel() so it works on Firefox 68 (no container queries / clamp) */
+  .mpanel{position:absolute;left:50%;top:50%;background:#0d0d10;border:1px solid #3a3a3a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.7);display:flex;flex-direction:column;padding:12px;gap:10px;}
+  .qpname{display:flex;align-items:center;gap:10px;flex:none;height:var(--row1,48px);}
+  .qpname i{width:var(--dot,18px);height:var(--dot,18px);border-radius:5px;flex:none;}
+  .qpname span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pix);font-size:var(--fsname,16px);color:#fff;text-transform:uppercase;}
+  .qpname button.x{height:100%;width:calc(var(--row1,48px)*1.3);border:1px solid #ff8a80;border-radius:10px;background:#c62828;color:#fff;font-size:var(--fsx,18px);flex:none;}
   .qpname button.x:active{transform:scale(.93);}
-  .mph{display:flex;align-items:center;justify-content:center;gap:2.5cqw;height:11cqh;flex:none;}
+  .mph{display:flex;align-items:center;justify-content:center;gap:8px;flex:none;height:var(--row2,40px);}
+  .mph button{height:100%;min-height:30px;min-width:0;flex:0 1 auto;overflow:hidden;white-space:nowrap;padding:0 12px;border:1px solid #555;border-radius:8px;background:#222;color:#fff;font-family:var(--pix);font-size:var(--fstab,11px);}
   .mph button.on{background:#3d6bff;border-color:#3d6bff;}
-  .mph button.tg{display:flex;align-items:center;gap:1cqw;}
-  .mph button.tg i{width:clamp(8px,3.5cqh,14px);height:clamp(8px,3.5cqh,14px);border-radius:3px;flex:none;}
-  .mph button.tg b{font-weight:400;color:#ffd54a;}
-  .mlab{width:100%;flex:none;text-align:center;font-family:var(--pix);font-size:clamp(7px,4.2cqh,12px);color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
-  .mph span:empty{display:none;}
-  .mph span{flex:none;margin-left:2cqw;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:clamp(9px,7cqh,15px);color:#fff;}
-  .mph button{height:100%;min-height:30px;min-width:0;flex:0 1 auto;overflow:hidden;white-space:nowrap;padding:0 3cqw;border:1px solid #555;border-radius:8px;background:#222;color:#fff;font-family:var(--pix);font-size:clamp(8px,6cqh,13px);}
   .mph button.x{background:#c62828;border-color:#ff8a80;min-width:44px;flex:none;}
   .mph button:active{transform:scale(.93);}
-  .mpc{flex:1;display:grid;grid-template-columns:repeat(var(--n6,6),calc((100% - 7.5cqw)/var(--w6,6)));justify-content:center;grid-auto-rows:1fr;gap:1.5cqh 1.5cqw;min-height:0;}
-  @container (orientation: portrait){ .mpc{grid-template-columns:repeat(var(--n3,3),calc((100% - 3cqw)/3));} .mph span{display:none;} .mph{gap:2cqw;} .mph button{padding:0 2cqw;font-size:8px;} }
-  .mcol .ms.leth{filter:drop-shadow(0 0 4px #ff3b30);} .mcol .ms.leth b{background:#c62828;}
-  .mcol{display:flex;flex-direction:column;align-items:center;gap:4%;min-height:0;container-type:size;}
-  .mcol button{width:100%;flex:1 1 0;min-height:22px;border:0;border-radius:10px;background:#2c2c2c;color:#fff;font-size:clamp(16px,11cqh,30px);font-weight:800;line-height:1;}
+  .mph button.tg{display:flex;align-items:center;gap:6px;}
+  .mph button.tg i{width:var(--tgdot,11px);height:var(--tgdot,11px);border-radius:3px;flex:none;}
+  .mph button.tg b{font-weight:400;color:#ffd54a;}
+  .mph span:empty{display:none;}
+  .mph span{flex:none;margin-left:10px;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:var(--fsinfo,13px);color:#fff;}
+  .mpc{flex:1;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:center;min-height:0;overflow:hidden;}
+  .mcol{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:var(--cell,90px);}
+  .mlab{width:100%;flex:none;text-align:center;font-family:var(--pix);font-size:var(--fslab,10px);color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mcol button{width:100%;height:var(--cbtn,38px);border:0;border-radius:10px;background:#2c2c2c;color:#fff;font-size:var(--fscbtn,24px);font-weight:800;line-height:1;}
   .mcol button:active{background:#555;transform:scale(.93);}
-  .mcol .ms{position:relative;flex:0 0 auto;width:min(100cqw,42cqh);height:min(100cqw,42cqh);}
-  .mcol .ms b{position:absolute;right:-18%;bottom:-8%;min-width:50%;padding:1px 3px;border-radius:7px;background:#000;border:1px solid #777;color:#fff;font-family:var(--pix);font-size:clamp(9px,6cqh,15px);font-weight:400;text-align:center;}
+  .mcol .ms{position:relative;flex:none;width:var(--tok,64px);height:var(--tok,64px);}
+  .mcol .ms b{position:absolute;right:-18%;bottom:-8%;min-width:50%;padding:1px 3px;border-radius:7px;background:#000;border:1px solid #777;color:#fff;font-family:var(--pix);font-size:var(--fstnum,13px);font-weight:400;text-align:center;}
   .mcol .ms.zero svg{opacity:.4;}
+  .mcol .ms.leth{filter:drop-shadow(0 0 4px #ff3b30);} .mcol .ms.leth b{background:#c62828;}
 
   .qbot{position:absolute;left:5%;right:5%;bottom:3%;display:flex;gap:4px;justify-content:center;align-items:flex-end;flex-wrap:wrap;z-index:8;}
   .qb{font-family:var(--pix);font-size:9px;color:rgba(255,255,255,.92);background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 6px;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:3px;white-space:nowrap;}
@@ -321,7 +321,8 @@ var PINWHEEL4={cols:2,rows:2,rot:[90,180,0,270],corner:["br","bl","tr","tl"]};
 
 /* card art catalogue — provided by art/cards.js (window.__CARDS) */
 var CARDS=(window.__CARDS||[]);
-function cardSrc(c){ return c.url || c.arturl || c.file; }
+var LOCAL=(location.protocol==="file:");
+function cardSrc(c){ return (LOCAL && c.file) ? c.file : (c.url || c.arturl || c.file); }
 
 var st;
 try{ st=JSON.parse(localStorage.getItem(LS)||"null"); }catch(e){ st=null; }
@@ -424,6 +425,7 @@ var grid=document.getElementById("grid"), bgCache={};
 /* keep an offline copy of a card background in IndexedDB, like a photo; online it simply loads from Scryfall */
 var artPending={};
 function storeCardArt(i){
+  if(LOCAL) return;   /* file:// cannot fetch and has no network: art comes from art/*.jpg */
   var pl=st.p[i], url=pl.bg && pl.bg.url;
   if(!url || artPending[i]===url || !window.fetch) return;
   artPending[i]=url;
@@ -485,7 +487,7 @@ function makeQ(i,L){
     else {
       bg.style.backgroundImage="url("+cardSrc(pl.bg)+")";
       if(pl.bg.cached) idbGet("p"+i).then(function(d){ if(d){ bgCache[i]=d; bg.style.backgroundImage="url("+d+")"; } });
-      else storeCardArt(i);   /* picked before offline copies existed: keep one now */
+      else if(!LOCAL) storeCardArt(i);   /* picked before offline copies existed: keep one now */
     }
   } else if(pl.bg && pl.bg.type==="grad"){ bg.style.backgroundImage=pl.bg.value; }
   else { q.style.background=pl.color; }
@@ -636,6 +638,13 @@ function drawPanel(){
   var box=document.createElement("div"); box.className="mpanel";
   box.style.width=Math.round(W*0.96)+"px"; box.style.height=Math.round(H*0.94)+"px";
   box.style.transform="translate(-50%,-50%) rotate("+rot+"deg)";
+  /* FF68 has no container queries: derive the panel sizes here, in px */
+  var Hb=H*0.94, bx=box.style;
+  function cl(mn,pct,mx){ return Math.round(Math.max(mn,Math.min(Hb*pct/100,mx)))+"px"; }
+  bx.setProperty("--row1",Math.round(Math.max(44,Math.min(Hb*0.12,84)))+"px");
+  bx.setProperty("--row2",Math.round(Math.max(34,Math.min(Hb*0.11,66)))+"px");
+  bx.setProperty("--dot",cl(12,5,22)); bx.setProperty("--fsname",cl(11,6.5,22)); bx.setProperty("--fsx",cl(14,6,22));
+  bx.setProperty("--fstab",cl(8,6,13)); bx.setProperty("--fsinfo",cl(9,7,15)); bx.setProperty("--tgdot",cl(8,3.5,14)); bx.setProperty("--fslab",cl(7,4.2,12));
   /* row 1: whose panel this is */
   var nm=document.createElement("div"); nm.className="qpname";
   var dot=document.createElement("i"); dot.style.background=pl.color;
@@ -651,8 +660,9 @@ function drawPanel(){
   var tot=document.createElement("span"); tabs.appendChild(tot);
   /* tokens */
   var cols=document.createElement("div"); cols.className="mpc";
-  var ni=spec.items.length, c6=ni<=8?ni:Math.ceil(ni/2);   /* up to 8 in one row, then two balanced rows */
-  cols.style.setProperty("--n6",c6); cols.style.setProperty("--w6",Math.max(6,c6)); cols.style.setProperty("--n3",Math.min(ni,3));
+  var ni=spec.items.length, hasLab=false;
+  var landCols=ni<=8?ni:Math.ceil(ni/2);   /* up to 8 in one row, then two balanced rows */
+  var ncols=(H>W)?Math.min(ni,3):landCols, nrows=Math.ceil(ni/ncols);
   var cells=[];
   spec.items.forEach(function(it){
     var c=document.createElement("div"); c.className="mcol";
@@ -663,7 +673,7 @@ function drawPanel(){
     plus.addEventListener("click",function(){ add(it.step); });
     sym.addEventListener("click",function(){ add(it.step); });
     minus.addEventListener("click",function(){ add(-it.step); });
-    if(it.label){ var lb=document.createElement("div"); lb.className="mlab"; lb.textContent=it.label; c.appendChild(lb); }
+    if(it.label){ hasLab=true; var lb=document.createElement("div"); lb.className="mlab"; lb.textContent=it.label; c.appendChild(lb); }
     c.appendChild(plus); c.appendChild(sym); c.appendChild(minus);
     cols.appendChild(c); cells.push({it:it,sym:sym,n:n});
   });
@@ -688,7 +698,18 @@ function drawPanel(){
     rerender();
   }
   box.appendChild(nm); box.appendChild(tabs); box.appendChild(cols); if(act.children.length) box.appendChild(act);
+  cols.style.width="100%";
   qpEl.appendChild(box); upd();
+  /* now the panel is laid out: size the tokens from the measured grid area */
+  var Wc=cols.clientWidth, Hc=cols.clientHeight;
+  var cw=(Wc-10*(ncols-1))/ncols, chh=(Hc-10*(nrows-1))/nrows;
+  var tok=Math.min(cw*0.86,(chh-(hasLab?18:4))/1.95);
+  tok=Math.round(Math.max(26,Math.min(tok,140)));
+  bx.setProperty("--cell",Math.floor(cw)+"px");
+  bx.setProperty("--tok",tok+"px");
+  bx.setProperty("--cbtn",Math.round(Math.max(20,Math.min(tok*0.55,54)))+"px");
+  bx.setProperty("--fscbtn",Math.round(Math.max(16,Math.min(tok*0.6,30)))+"px");
+  bx.setProperty("--fstnum",Math.round(Math.max(9,Math.min(tok*0.32,16)))+"px");
 }
 
 // mini seat-map: a grid matching the on-screen quad layout, the source player's cell lit
