@@ -1,0 +1,1278 @@
+<!DOCTYPE html>
+<html lang="it">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#000000">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="shortcut icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<link rel="stylesheet" href="pixfont.css">
+<title>Commander Life</title>
+<style>
+  :root{--pix:"PixFont","Press Start 2P",monospace;}
+  *{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent;-webkit-user-select:none;-moz-user-select:none;user-select:none;}
+  html,body{width:100%;height:100%;overflow:hidden;background:#000;font-family:var(--pix);touch-action:manipulation;color:#fff;}
+  /* one typeface everywhere: form controls do not inherit it by default */
+  input,button,textarea,select{font-family:inherit;}
+
+  #grid{position:absolute;inset:0;display:grid;gap:8px;padding:8px;background:#000;}
+  .q{position:relative;overflow:hidden;border-radius:22px;background:#444;transition:box-shadow .2s;}
+  .q .bg{position:absolute;inset:0;background-size:cover;background-position:center top;}
+  .q .scrim{position:absolute;inset:0;background:rgba(0,0,0,0);}
+  .q.hasimg .scrim{background:rgba(0,0,0,.34);}
+  .q.dead .frame>:not(.mpanel){filter:grayscale(1) brightness(.42);}
+  .q.dead .out{display:flex;}
+  .q.risk .life{color:#ff5252;}
+  .q.active{box-shadow:inset 0 0 0 5px #ffd54a,0 0 22px rgba(255,213,74,.5);}
+
+  /* one rotated frame per quad — all children in the player's own coordinate system */
+  .frame{position:absolute;inset:0;}
+
+  .qtap{position:absolute;top:0;bottom:0;width:42%;display:flex;align-items:center;z-index:3;}
+  .qtap.L{left:0;justify-content:flex-start;} .qtap.R{right:0;justify-content:flex-end;}
+  .qtap:active{background:rgba(255,255,255,.09);}
+  .sign{font-size:7vh;font-weight:800;color:rgba(255,255,255,.5);padding:0 6%;text-shadow:0 1px 4px rgba(0,0,0,.4);}
+
+  .life{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);text-align:center;font-weight:800;line-height:1;color:#fff;font-variant-numeric:tabular-nums;text-shadow:0 3px 0 rgba(0,0,0,.35);z-index:2;}
+  .delta{position:absolute;left:0;right:0;top:17%;text-align:center;font-weight:800;color:#fff;opacity:0;transition:opacity .2s;z-index:4;pointer-events:none;text-shadow:0 2px 8px rgba(0,0,0,.6);}
+  .delta.show{opacity:.92;}
+  .out{position:absolute;left:0;right:0;top:50%;transform:translateY(-50%);display:none;text-align:center;font-weight:900;letter-spacing:.2em;color:rgba(255,255,255,.92);z-index:6;text-shadow:0 3px 12px #000;}
+
+  .qhead{position:absolute;left:4%;right:4%;top:3%;display:flex;gap:5px;justify-content:center;align-items:center;z-index:8;}
+  .pills{position:absolute;left:6%;right:6%;top:66%;display:flex;flex-wrap:wrap;gap:5px;justify-content:center;z-index:7;}
+  /* floating mana: round pips like the card symbols */
+  .manarow{position:absolute;left:4%;right:4%;top:17.5%;display:flex;gap:6px;justify-content:center;z-index:7;}
+  .mp{display:flex;align-items:center;gap:3px;background:rgba(8,8,10,.7);border:1px solid rgba(255,255,255,.28);border-radius:14px;padding:2px 7px 2px 2px;box-shadow:0 2px 8px rgba(0,0,0,.45);}
+  .mp:active{transform:scale(.92);}
+  .mp.hot{background:#c62828;border-color:#ff8a80;}
+  .mp i,.mcol .ms{font-style:normal;display:flex;align-items:center;justify-content:center;}
+  .mp i{width:3.4vh;height:3.4vh;min-width:24px;min-height:24px;}
+  .mp i svg,.mcol .ms svg{width:100%;height:100%;display:block;}
+  .mp b{font-family:var(--pix);font-size:12px;color:#fff;font-weight:400;}
+  .qb .mtot{background:#ffd54a;color:#222;border-radius:6px;padding:1px 4px;}
+  /* in-quad mana panel: lives inside the rotated frame, so it faces its player */
+  /* player panel: one centred box, rotated toward its player */
+  #qp{position:fixed;inset:0;z-index:55;background:rgba(0,0,0,.55);display:none;}
+  #qp.on{display:block;}
+  /* panel sizes are px custom properties computed in drawPanel() so it works on Firefox 68 (no container queries / clamp) */
+  .mpanel{position:absolute;left:50%;top:50%;background:#0d0d10;border:1px solid #3a3a3a;border-radius:16px;box-shadow:0 10px 40px rgba(0,0,0,.7);display:flex;flex-direction:column;padding:12px;gap:10px;}
+  .qpname{display:flex;align-items:center;gap:10px;flex:none;height:var(--row1,48px);}
+  .qpname i{width:var(--dot,18px);height:var(--dot,18px);border-radius:5px;flex:none;}
+  .qpname span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:var(--pix);font-size:var(--fsname,16px);color:#fff;text-transform:uppercase;}
+  .qpname button.x{height:100%;width:calc(var(--row1,48px)*1.3);border:1px solid #ff8a80;border-radius:10px;background:#c62828;color:#fff;font-size:var(--fsx,18px);flex:none;}
+  .qpname button.x:active{transform:scale(.93);}
+  .mph{display:flex;align-items:center;justify-content:center;gap:8px;flex:none;height:var(--row2,40px);}
+  .mph button{height:100%;min-height:30px;min-width:0;flex:0 1 auto;overflow:hidden;white-space:nowrap;padding:0 12px;border:1px solid #555;border-radius:8px;background:#222;color:#fff;font-family:var(--pix);font-size:var(--fstab,11px);}
+  .mph button.on{background:#3d6bff;border-color:#3d6bff;}
+  .mph button.x{background:#c62828;border-color:#ff8a80;min-width:44px;flex:none;}
+  .mph button:active{transform:scale(.93);}
+  .mph button.tg{display:flex;align-items:center;gap:6px;}
+  .mph button.tg i{width:var(--tgdot,11px);height:var(--tgdot,11px);border-radius:3px;flex:none;}
+  .mph button.tg b{font-weight:400;color:#ffd54a;}
+  .mph span:empty{display:none;}
+  .mph span{flex:none;margin-left:10px;white-space:nowrap;text-align:center;font-family:var(--pix);font-size:var(--fsinfo,13px);color:#fff;}
+  .mpc{flex:1;display:flex;flex-wrap:wrap;gap:10px;justify-content:center;align-content:center;min-height:0;overflow:hidden;}
+  .mcol{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;width:var(--cell,90px);}
+  .mlab{width:100%;flex:none;text-align:center;font-family:var(--pix);font-size:var(--fslab,10px);color:#ccc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+  .mcol button{width:100%;height:var(--cbtn,38px);border:0;border-radius:10px;background:#2c2c2c;color:#fff;font-size:var(--fscbtn,24px);font-weight:800;line-height:1;}
+  .mcol button:active{background:#555;transform:scale(.93);}
+  .mcol .ms{position:relative;flex:none;width:var(--tok,64px);height:var(--tok,64px);}
+  .mcol .ms b{position:absolute;right:-18%;bottom:-8%;min-width:50%;padding:1px 3px;border-radius:7px;background:#000;border:1px solid #777;color:#fff;font-family:var(--pix);font-size:var(--fstnum,13px);font-weight:400;text-align:center;}
+  .mcol .ms.zero svg{opacity:.4;}
+  .mcol .ms.leth{filter:drop-shadow(0 0 4px #ff3b30);} .mcol .ms.leth b{background:#c62828;}
+
+  .qbot{position:absolute;left:5%;right:5%;bottom:3%;display:flex;gap:4px;justify-content:center;align-items:flex-end;flex-wrap:wrap;z-index:8;}
+  .qb{font-family:var(--pix);font-size:9px;color:rgba(255,255,255,.92);background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 6px;box-shadow:0 2px 8px rgba(0,0,0,.4);display:flex;align-items:center;gap:3px;white-space:nowrap;}
+  .qb:active{background:rgba(0,0,0,.85);transform:scale(.93);}
+  .qb i{font-style:normal;font-size:11px;color:#fff;}
+  .pname{font-family:var(--pix);font-size:10px;color:#fff;background:rgba(8,8,10,.66);border:1px solid rgba(255,255,255,.22);border-radius:8px;padding:7px 9px;max-width:44vw;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-transform:uppercase;letter-spacing:.03em;}
+
+  .ic{width:30px;height:30px;border-radius:8px;background:rgba(8,8,10,.62);border:1px solid rgba(255,255,255,.24);display:flex;align-items:center;justify-content:center;box-shadow:0 2px 8px rgba(0,0,0,.4);flex:none;}
+  .ic:active{background:rgba(0,0,0,.85);transform:scale(.9);}
+  .ic svg{width:17px;height:17px;fill:rgba(255,255,255,.92);}
+  .ic.crownon{background:linear-gradient(145deg,#ffe082,#ffb300);border-color:#fff3c4;} .ic.crownon svg{fill:#4a3600;}
+
+  .qb-danno{flex-direction:column;align-items:center;gap:4px;}
+  .qb-danno .drow{display:flex;gap:7px;justify-content:center;}
+  .dmini{display:flex;flex-direction:column;align-items:center;gap:2px;}
+  .pipseat{display:grid;gap:2px;}
+  .pipseat i{width:6px;height:6px;background:rgba(255,255,255,.22);border-radius:1px;}
+  .pipseat i.on{background:#ff8c00;}
+  .pipseat.leth i.on{background:#ff3b30;}
+  .dnum{font-family:var(--pix);font-size:10px;color:#fff;line-height:1;text-align:center;}
+  .dnum.leth{color:#ff5252;}
+
+  /* global controls — board dead-centre, never overlaps quad content (which sits at each quad's outer edge) */
+  #center{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%) scale(var(--cs,1));z-index:30;display:flex;flex-direction:column;align-items:stretch;gap:4px;background:#000;border:1px solid #2a2a2a;border-radius:13px;padding:9px;box-shadow:0 4px 16px rgba(0,0,0,.6);width:200px;}
+  #center .clk{font-family:var(--pix);font-size:16px;color:#fff;letter-spacing:.03em;text-align:center;}
+  #center .clk.paused{color:#777;}
+  #center .turnclk{font-family:var(--pix);font-size:11px;color:#9aa;text-align:center;letter-spacing:.02em;}
+  #center #cTurn{width:100%;}
+  #center .row{display:flex;gap:3px;}
+  #center button{flex:1;font-family:var(--pix);font-size:8px;color:#e8e8e8;background:#1a1a1a;border:1px solid #555;border-radius:7px;padding:9px 2px;display:flex;align-items:center;justify-content:center;min-height:30px;}
+  #center button svg{width:13px;height:13px;}
+  #center button:active{background:#333;}
+  /* 2 players side by side: centre controls become a slim column in the gap between the halves */
+  body.two #grid{column-gap:calc(84px * var(--cs,1));}
+  body.two #center{width:72px;padding:7px 6px;}
+  body.two #center .clk{font-size:11px;}
+  body.two #center .turnclk{font-size:8px;}
+  body.two #center .row{flex-direction:column;}
+  body.two #center button{flex:none;}
+
+
+  .sheet{position:absolute;inset:0;background:rgba(0,0,0,.95);z-index:50;display:none;flex-direction:column;}
+  .sheet.on{display:flex;}
+  .sheet .hd{display:flex;align-items:center;gap:12px;padding:14px 16px;border-bottom:1px solid #222;}
+  .sheet .hd h2{font-size:13px;flex:1;font-family:var(--pix);}
+  .sheet .hd button{background:#c62828;border:0;color:#fff;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:800;font-family:var(--pix);}
+  .sheet .bd{flex:1;overflow-y:auto;padding:12px 16px 60px;}
+  .grp{margin:16px 0 4px;font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:#888;}
+  .orow{display:flex;align-items:center;gap:10px;width:100%;max-width:720px;margin:6px 0;background:#161616;border-radius:10px;padding:9px 12px;}
+  .orow .lbl{flex:1;font-size:12px;line-height:1.5;}
+  .orow .val{font-size:22px;font-weight:800;min-width:44px;text-align:center;}
+  .orow button{width:50px;height:50px;border:0;border-radius:8px;background:#333;color:#fff;font-size:24px;font-weight:800;flex:none;}
+  .orow button:active{background:#555;}
+  .orow input[type=text]{flex:1;background:#0c0c0c;border:1px solid #333;color:#fff;border-radius:8px;padding:10px;font-size:13px;}
+  .chips{display:flex;flex-wrap:wrap;gap:8px;margin:4px 0;}
+  .chip{background:#222;border:1px solid #333;border-radius:16px;padding:9px 15px;font-family:var(--pix);font-size:11px;}
+  .chip.sel{background:#3d6bff;border-color:#3d6bff;}
+  .swatch{width:40px;height:40px;border-radius:50%;border:3px solid transparent;}
+  .swatch.sel{border-color:#fff;}
+  .grad{width:64px;height:40px;border-radius:8px;border:3px solid transparent;}
+  .grad.sel{border-color:#fff;}
+  .btn{display:inline-block;background:#2a2a2a;border:1px solid #3a3a3a;border-radius:10px;padding:12px 16px;font-family:var(--pix);font-size:11px;margin:5px 6px 0 0;}
+  .btn:active{background:#3a3a3a;} .btn.danger{background:#7a1c1c;border-color:#a33;}
+  .tip{background:#141414;border-radius:10px;padding:12px 14px;font-size:11px;line-height:1.9;color:#bbb;margin-top:6px;}
+
+  #dice{align-items:center;justify-content:center;text-align:center;}
+  #dieStage{position:relative;width:100%;height:40vh;display:flex;align-items:center;justify-content:center;margin-bottom:2vh;}
+  #stagePersp{width:32vh;height:32vh;perspective:900px;}
+  .d20{width:100%;height:100%;-webkit-transform-style:preserve-3d;transform-style:preserve-3d;filter:drop-shadow(0 14px 16px rgba(0,0,0,.55));}
+  .d20.rolling{-webkit-animation:d20roll 1.05s cubic-bezier(.25,.6,.2,1) forwards;animation:d20roll 1.05s cubic-bezier(.25,.6,.2,1) forwards;}
+  @-webkit-keyframes d20roll{0%{-webkit-transform:rotateZ(0) rotateY(0) rotateX(0) scale(.4)}55%{-webkit-transform:rotateZ(560deg) rotateY(400deg) rotateX(230deg) scale(1.06)}100%{-webkit-transform:rotateZ(1080deg) rotateY(720deg) rotateX(360deg) scale(1)}}
+  @keyframes d20roll{0%{transform:rotateZ(0) rotateY(0) rotateX(0) scale(.4)}55%{transform:rotateZ(560deg) rotateY(400deg) rotateX(230deg) scale(1.06)}100%{transform:rotateZ(1080deg) rotateY(720deg) rotateX(360deg) scale(1)}}
+  #d20num{font-family:var(--pix);fill:#c62828;}
+  #diceRes{position:absolute;font-family:var(--pix);font-size:22vh;line-height:1;color:#fff;opacity:0;transform:scale(.4);text-shadow:0 4px 0 rgba(0,0,0,.4);}
+  #diceRes.show{opacity:1;transform:scale(1);transition:opacity .25s,transform .3s cubic-bezier(.2,1.6,.4,1);}
+  #diceLabel{position:absolute;bottom:1vh;font-family:var(--pix);font-size:14px;letter-spacing:.1em;color:#888;}
+  #dice .dbtns{display:flex;flex-wrap:wrap;gap:9px;justify-content:center;max-width:600px;}
+  #dice .dbtns button{background:#222;border:1px solid #444;border-radius:12px;color:#fff;font-family:var(--pix);font-size:13px;padding:13px 15px;min-width:60px;}
+  #dice .dbtns button:active{background:#3d6bff;}
+  #dice .dclose{margin-top:14px;background:#c62828;border:0;color:#fff;border-radius:10px;padding:14px 40px;font-family:var(--pix);font-size:12px;}
+  #diceLog{display:flex;flex-wrap:wrap;gap:6px;justify-content:center;max-width:620px;margin-top:14px;min-height:26px;}
+  #diceLog span{font-family:var(--pix);font-size:11px;background:#1c1c1c;border:1px solid #333;border-radius:9px;padding:5px 9px;color:#bbb;}
+  #diceLog span b{color:#fff;}
+
+  .cardItem{border-radius:9px;overflow:hidden;background:#161616;border:1px solid #2a2a2a;}
+  .cardItem .thumb{width:100%;height:92px;background-size:cover;background-position:center;background-color:#222;}
+  .cardItem .cn{font-size:9px;padding:6px 7px;line-height:1.5;color:#ddd;}
+  .cardItem:active{border-color:#3d6bff;}
+
+  #toast{pointer-events:none;position:absolute;left:50%;bottom:46px;transform:translateX(-50%);background:rgba(0,0,0,.85);color:#fff;padding:9px 16px;border-radius:8px;font-size:12px;line-height:1.5;z-index:60;opacity:0;transition:opacity .3s;text-align:center;max-width:80%;}
+  #toast.show{opacity:1;}
+  input[type=file]{display:none;}
+</style>
+</head>
+<body>
+<div id="grid"></div>
+<div id="center">
+  <div class="clk" id="clk">0:00</div>
+  <div class="turnclk" id="turnclk" style="display:none"></div>
+  <button id="cTurn" style="display:none">TURNO &#9654;</button>
+  <div class="row">
+    <button id="cDice">DADI</button>
+    <button id="cUndo">&#8630;</button>
+    <button id="cFs" title="Schermo intero"><svg viewBox="0 0 24 24" fill="currentColor"><path d="M3 3h7v2H5v5H3V3zm11 0h7v7h-2V5h-5V3zM3 14h2v5h5v2H3v-7zm16 0h2v7h-7v-2h5v-5z"/></svg></button>
+    <button id="cMenu">&#8942;</button>
+  </div>
+</div>
+
+<div class="sheet" id="pSheet"><div class="hd"><h2 id="pTitle"></h2><button id="pClose">Chiudi</button></div><div class="bd" id="pBody"></div></div>
+<div class="sheet" id="sSheet"><div class="hd"><h2>Impostazioni</h2><button id="sClose">Chiudi</button></div><div class="bd" id="sBody"></div></div>
+
+<div class="sheet" id="dice">
+  <div id="dieStage">
+    <div id="stagePersp">
+      <svg class="d20" id="d20" viewBox="0 0 100 100">
+        <g stroke="#7f8290" stroke-width="1" stroke-linejoin="round">
+          <polygon points="50,4 90,27 50,33"  fill="#eef0f4"/>
+          <polygon points="10,27 50,4 50,33"  fill="#f7f8fb"/>
+          <polygon points="32,64 10,27 50,33" fill="#e2e4ea"/>
+          <polygon points="10,73 10,27 32,64" fill="#d6d9e1"/>
+          <polygon points="50,96 10,73 32,64" fill="#cdd0da"/>
+          <polygon points="68,64 50,96 32,64" fill="#dfe1e8"/>
+          <polygon points="90,73 50,96 68,64" fill="#c7cad4"/>
+          <polygon points="90,27 90,73 68,64" fill="#d1d4dd"/>
+          <polygon points="50,33 90,27 68,64" fill="#e7e9ef"/>
+          <polygon points="50,33 68,64 32,64" fill="#ffffff"/>
+        </g>
+        <polygon points="10,27 50,4 90,27 90,73 50,96 10,73" fill="none" stroke="#5b5e6b" stroke-width="1.6" stroke-linejoin="round"/>
+        <text id="d20num" x="50" y="60" text-anchor="middle" font-size="24" font-weight="700">20</text>
+      </svg>
+    </div>
+    <div id="diceRes"></div>
+    <div id="diceLabel"></div>
+  </div>
+  <div class="dbtns" id="diceBtns"></div>
+  <div id="diceLog"></div>
+  <button class="dclose" id="diceClose">Chiudi</button>
+</div>
+
+<div class="sheet" id="cards"><div class="hd"><h2>Scegli una carta</h2><button id="cardsClose">Chiudi</button></div>
+  <div style="padding:10px 16px 0"><input type="text" id="cardSearch" placeholder="Cerca comandante..." style="width:100%;background:#0c0c0c;border:1px solid #333;color:#fff;border-radius:8px;padding:11px;font-size:13px"></div>
+  <div class="bd"><div id="cardGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px"></div></div>
+</div>
+
+<div class="sheet" id="cam"><div class="hd"><h2>Foto dalla fotocamera</h2><button id="camClose">Annulla</button></div>
+  <div class="bd" style="display:flex;flex-direction:column;align-items:center;gap:14px">
+    <video id="camVid" autoplay playsinline muted style="max-width:100%;max-height:56vh;border-radius:12px;background:#000"></video>
+    <div style="display:flex;gap:10px;flex-wrap:wrap;justify-content:center">
+      <span class="btn" id="camShot">Scatta</span>
+      <span class="btn" id="camFlip">Cambia camera</span>
+    </div>
+    <div id="camErr" style="color:#f88;font-size:12px;text-align:center;max-width:480px"></div>
+  </div>
+</div>
+
+<input type="file" id="filePick" accept="image/*">
+<input type="file" id="importPick" accept="application/json,.json">
+<div id="qp"></div>
+<div id="toast"></div>
+
+<script src="art/cards.js"></script>
+<script>
+(function(){
+"use strict";
+
+var GEAR='<svg viewBox="0 0 24 24"><path d="M19.43 12.98a7.8 7.8 0 000-1.96l2.02-1.58a.5.5 0 00.12-.63l-1.92-3.32a.5.5 0 00-.6-.22l-2.39.96a7.3 7.3 0 00-1.7-.98l-.36-2.54A.48.48 0 0014.13 2h-3.84a.48.48 0 00-.48.41l-.36 2.54c-.6.25-1.17.58-1.7.98l-2.39-.96a.5.5 0 00-.6.22L2.44 8.51a.5.5 0 00.12.63l2.02 1.58a7.8 7.8 0 000 1.96l-2.02 1.58a.5.5 0 00-.12.63l1.92 3.32c.13.22.38.3.6.22l2.39-.96c.53.4 1.1.73 1.7.98l.36 2.54c.04.24.24.41.48.41h3.84c.24 0 .44-.17.48-.41l.36-2.54c.6-.25 1.17-.58 1.7-.98l2.39.96c.22.08.47 0 .6-.22l1.92-3.32a.5.5 0 00-.12-.63l-2.02-1.58zM12 15.5A3.5 3.5 0 1112 8.5a3.5 3.5 0 010 7z"/></svg>';
+var CROWN='<svg viewBox="0 0 24 24"><path d="M2.5 8.5l3.2 2.4L11 4.2c.5-.7 1.5-.7 2 0l5.3 6.7 3.2-2.4c.8-.6 1.9.1 1.7 1.1l-1.9 9c-.1.5-.5.8-1 .8H4.7c-.5 0-.9-.3-1-.8l-1.9-9c-.2-1 .9-1.7 1.7-1.1zM5 21h14v-1.5H5V21z"/></svg>';
+
+/* ---------- sounds (WebAudio, no assets) ---------- */
+var AC=window.AudioContext||window.webkitAudioContext, actx=null;
+function audio(){ if(!actx&&AC){ try{ actx=new AC(); }catch(e){} } if(actx&&actx.state==="suspended"){ try{ actx.resume(); }catch(e){} } return actx; }
+function tone(freq,dur,type,vol,when){
+  var a=actx; if(!a) return;
+  var o=a.createOscillator(),g=a.createGain();
+  o.type=type||"sine"; o.frequency.value=freq;
+  var t=a.currentTime+(when||0);
+  g.gain.setValueAtTime(Math.max(0.0001,vol||0.2),t);
+  g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+  o.connect(g); g.connect(a.destination); o.start(t); o.stop(t+dur);
+}
+function sfx(name){
+  if(!st.sound) return; if(!audio()) return;
+  if(name==="dice"){ for(var i=0;i<6;i++) tone(110+Math.random()*90,0.05,"square",0.10,i*0.07); tone(880,0.13,"triangle",0.18,0.5); tone(1320,0.18,"sine",0.12,0.6); }
+  else if(name==="bell"){ tone(659,0.28,"sine",0.22,0); tone(988,0.5,"sine",0.16,0.13); }
+  else if(name==="tick"){ tone(1200,0.02,"sine",0.04,0); }
+}
+
+/* ---------- image storage ---------- */
+var idb=null;
+function openIDB(){return new Promise(function(res){
+  try{ var r=indexedDB.open("cmdrImg",1);
+    r.onupgradeneeded=function(){ r.result.createObjectStore("bg"); };
+    r.onsuccess=function(){ idb=r.result; res(); };
+    r.onerror=function(){ res(); };
+  }catch(e){ res(); }
+});}
+function idbSet(k,v){ if(!idb)return; try{ idb.transaction("bg","readwrite").objectStore("bg").put(v,k); }catch(e){} }
+function idbGet(k){return new Promise(function(res){ if(!idb){res(null);return;}
+  try{ var rq=idb.transaction("bg","readonly").objectStore("bg").get(k); rq.onsuccess=function(){res(rq.result||null);}; rq.onerror=function(){res(null);}; }catch(e){ res(null); } });}
+function idbDel(k){ if(!idb)return; try{ idb.transaction("bg","readwrite").objectStore("bg").delete(k); }catch(e){} }
+function idbKeys(){return new Promise(function(res){ if(!idb){res([]);return;}
+  try{ var s=idb.transaction("bg","readonly").objectStore("bg");
+    if(s.getAllKeys){ var rq=s.getAllKeys(); rq.onsuccess=function(){res(rq.result||[]);}; rq.onerror=function(){res([]);}; return; }
+    var out=[]; var c=s.openCursor(); c.onsuccess=function(e){ var cur=e.target.result; if(cur){ out.push(cur.key); cur.continue(); } else res(out); }; c.onerror=function(){res(out);};
+  }catch(e){ res([]); } });}
+
+/* ---------- state ---------- */
+var LS="cmdrV4";
+var COLORS=["#e63b52","#3d6bff","#f4b400","#12b886","#d98cff","#ff922b"];
+var GRADS=[
+ "linear-gradient(135deg,#e63b52,#7a1030)","linear-gradient(135deg,#3d6bff,#0b1e6b)",
+ "linear-gradient(135deg,#f4b400,#7a4d00)","linear-gradient(135deg,#12b886,#064b38)",
+ "linear-gradient(135deg,#d98cff,#5b1f7a)","linear-gradient(135deg,#ff922b,#7a3a00)",
+ "linear-gradient(135deg,#232526,#414345)","linear-gradient(135deg,#0f2027,#2c5364)",
+ "linear-gradient(135deg,#42275a,#734b6d)","linear-gradient(135deg,#1e130c,#9a8478)",
+ "linear-gradient(135deg,#005c97,#363795)","linear-gradient(135deg,#3a1c71,#d76d77,#ffaf7b)"
+];
+var CATALOG=[
+  {k:"poison",label:"Veleno",tag:"VELENO",lethal:10},
+  {k:"energy",label:"Energy",tag:"ENERGY"},
+  {k:"exp",label:"Experience",tag:"EXP"},
+  {k:"rad",label:"Rad",tag:"RAD"},
+  {k:"storm",label:"Storm",tag:"STORM"},
+  {k:"ticket",label:"Ticket / Acorn",tag:"TICKET"},
+  {k:"tax",label:"Tassa comandante",tag:"TAX"}
+];
+var LAYOUTS={
+ 2:{cols:2,rows:1,rot:[90,270],corner:["tl","tr"]},
+ 3:{cols:2,rows:2,rot:[180,180,0],corner:["tl","tr","bl"]},
+ 4:{cols:2,rows:2,rot:[180,180,0,0],corner:["tl","tr","bl","br"]},
+ 5:{cols:2,rows:3,rot:[180,180,0,0,0],corner:["tl","tr","bl","br","bl"]},
+ 6:{cols:2,rows:3,rot:[180,180,180,0,0,0],corner:["tl","tr","tl","bl","br","bl"]}
+};
+var PINWHEEL4={cols:2,rows:2,rot:[90,180,0,270],corner:["br","bl","tr","tl"]};
+
+/* card art catalogue — provided by art/cards.js (window.__CARDS) */
+var CARDS=(window.__CARDS||[]);
+var LOCAL=(location.protocol==="file:");
+function cardSrc(c){ return (LOCAL && c.file) ? c.file : (c.url || c.arturl || c.file); }
+
+var st;
+try{ st=JSON.parse(localStorage.getItem(LS)||"null"); }catch(e){ st=null; }
+function newSeat(i,life){ return {name:"Giocatore "+(i+1),color:COLORS[i%6],bg:{type:"solid"},life:life,counters:{},custom:[],mana:{},cmdrs:[{name:"Comandante",art:null}],cmdDmg:{},rot:null}; }
+function fresh(n,life){ var s={n:n,start:life,active:0,turn:1,monarch:-1,turnMode:false,vibrate:false,sound:true,wakeLock:true,manaClear:true,layout:"grid",presets:[],match:{elapsed:0,turnElapsed:0,running:false},p:[]}; for(var i=0;i<6;i++) s.p.push(newSeat(i,life)); return s; }
+function migrate(st){
+if(!st||typeof st!=="object") st=fresh(4,40);
+if(!LAYOUTS[st.n]) st.n=4;
+if(!(st.start>0)) st.start=40;
+if(!st.p||st.p.length<6){ st.p=st.p||[]; for(var _i=st.p.length;_i<6;_i++) st.p.push(newSeat(_i,st.start||40)); }
+if(st.wakeLock===undefined) st.wakeLock=true;
+if(st.manaClear===undefined) st.manaClear=true;
+if(st.monarch===undefined) st.monarch=-1;
+if(st.turnMode===undefined) st.turnMode=false;
+if(st.vibrate===undefined) st.vibrate=false;
+if(!st.vibMigrated){ st.vibrate=false; st.vibMigrated=true; }  /* stop the browser permission prompt by default */
+if(st.sound===undefined) st.sound=true;
+if(!st.layout) st.layout="grid";
+if(!st.presets) st.presets=[];
+if(!st.match) st.match={elapsed:0,turnElapsed:0,running:false};
+if(!st.turn) st.turn=1;
+if(!(st.active>=0 && st.active<st.n)) st.active=0;
+if(st.monarch>=st.n) st.monarch=-1;
+st.p.forEach(function(p,pi){
+  delete p.hist;
+  if(!p.counters) p.counters={};
+  if(!p.custom) p.custom=[];
+  if(!p.mana) p.mana={};
+  if(!p.bg) p.bg={type:"solid"};
+  if(!p.cmdrs) p.cmdrs=[{name:"Comandante",art:null}];
+  if(!p.cmdDmg){
+    p.cmdDmg={};
+    if(p.cmd){ for(var oi in p.cmd){ if(p.cmd[oi]) p.cmdDmg[oi+"|0"]=p.cmd[oi]; } } // migrate old model
+  }
+});
+return st;
+}
+st=migrate(st);
+function save(){ try{ localStorage.setItem(LS,JSON.stringify(st)); }catch(e){} }
+var lastSave=0;
+function saveSoft(){ var n=Date.now(); if(n-lastSave>4000){ lastSave=n; save(); } }
+
+/* ---------- undo ---------- */
+var undoStack=[];
+function snap(){ undoStack.push(JSON.stringify({p:st.p,monarch:st.monarch,active:st.active,turn:st.turn})); if(undoStack.length>60) undoStack.shift(); }
+function undo(){
+  if(!undoStack.length){ toast("Niente da annullare"); return; }
+  var s=JSON.parse(undoStack.pop());
+  st.p=s.p; st.monarch=s.monarch; st.active=s.active; if(s.turn) st.turn=s.turn;
+  save(); build(); toast("Annullato");
+}
+function vib(ms){ if(st.vibrate && navigator.vibrate){ try{ navigator.vibrate(ms); }catch(e){} } }
+
+/* ---------- helpers ---------- */
+function maxCmdDmg(pl){ var m=0; for(var k in pl.cmdDmg){ if(pl.cmdDmg[k]>m) m=pl.cmdDmg[k]; } return m; }
+/* OUT is set by hand from the player sheet: 0 life, 21 commander damage and 10 poison are only
+   flagged in red, because some effects keep a player alive */
+function isDead(pl){ return !!pl.out; }
+function setCmdrCount(pi,count){
+  snap();
+  var opp=st.p[pi];
+  if(count===2){
+    if(!opp.cmdrs) opp.cmdrs=[{name:"Comandante 1",art:null}];
+    if(opp.cmdrs.length<2) opp.cmdrs.push({name:"Comandante 2",art:null});
+    if(opp.cmdrs[0] && opp.cmdrs[0].name==="Comandante") opp.cmdrs[0].name="Comandante 1";
+  } else {
+    // merge every receiver's slot-1 damage from pi back into slot-0
+    for(var r=0;r<6;r++){ if(r===pi) continue; var cd=st.p[r].cmdDmg||{};
+      if(cd[pi+"|1"]){ cd[pi+"|0"]=(cd[pi+"|0"]||0)+cd[pi+"|1"]; }
+      delete cd[pi+"|1"];
+    }
+    opp.cmdrs=[ (opp.cmdrs&&opp.cmdrs[0]) || {name:"Comandante",art:null} ];
+  }
+  save(); build();
+}
+
+/* seats in clockwise table order (top row L->R, right col, bottom row R->L, left col) */
+function cwOrder(){
+  var L=layoutFor(), cols=L.cols, rows=Math.ceil(st.n/cols), g=[], r, c, out=[];
+  for(r=0;r<rows;r++){ g[r]=[]; for(c=0;c<cols;c++){ var idx=r*cols+c; g[r][c]=(idx<st.n)?idx:null; } }
+  function add(v){ if(v!=null && out.indexOf(v)<0) out.push(v); }
+  for(c=0;c<cols;c++) add(g[0][c]);
+  for(r=1;r<rows;r++) add(g[r][cols-1]);
+  for(c=cols-2;c>=0;c--) add(g[rows-1][c]);
+  for(r=rows-2;r>=1;r--) add(g[r][0]);
+  return out;
+}
+function nextSeatCW(cur){ var o=cwOrder(), p=o.indexOf(cur); return o[(p+1)%o.length]; }
+
+/* ---------- layout ---------- */
+var STACK2={cols:1,rows:2,rot:[180,0],corner:["tr","br"]};
+function layoutFor(){
+  if(st.layout==="pinwheel" && st.n===4) return PINWHEEL4;
+  if(st.n===2 && window.innerHeight>window.innerWidth) return STACK2;   /* portrait: one above the other */
+  return LAYOUTS[st.n];
+}
+
+/* ---------- board ---------- */
+var grid=document.getElementById("grid"), bgCache={};
+/* keep an offline copy of a card background in IndexedDB, like a photo; online it simply loads from Scryfall */
+var artPending={};
+function storeCardArt(i){
+  if(LOCAL) return;   /* file:// cannot fetch and has no network: art comes from art/*.jpg */
+  var pl=st.p[i], url=pl.bg && pl.bg.url;
+  if(!url || artPending[i]===url || !window.fetch) return;
+  artPending[i]=url;
+  fetch(url,{mode:"cors"}).then(function(r){ return r.ok ? r.blob() : null; }).then(function(b){
+    if(!b) return;
+    return new Promise(function(res){ var fr=new FileReader(); fr.onload=function(){ res(fr.result); }; fr.onerror=function(){ res(null); }; fr.readAsDataURL(b); });
+  }).then(function(d){
+    if(!d || !st.p[i].bg || st.p[i].bg.url!==url) return;   /* background changed meanwhile */
+    bgCache[i]=d; idbSet("p"+i,d); st.p[i].bg.cached=true; save();
+  }).catch(function(){}).then(function(){ if(artPending[i]===url) delete artPending[i]; });
+}
+function build(){
+  var L=layoutFor();
+  var portrait=window.innerHeight>window.innerWidth;
+  var cols=L.cols, rows=L.rows;
+  if(portrait && st.n<=3 && st.layout!=="pinwheel"){ cols=1; rows=st.n; }
+  document.body.classList.toggle("two", L.cols===2 && st.n===2);
+  /* centre controls scale with the screen (phones 1x, tablets up to 1.5x) */
+  document.documentElement.style.setProperty("--cs",Math.max(1,Math.min(1.5,Math.min(window.innerWidth,window.innerHeight)/430)).toFixed(2));
+  grid.style.gridTemplateColumns="repeat("+cols+",1fr)";
+  grid.style.gridTemplateRows="repeat("+rows+",1fr)";
+  grid.innerHTML="";
+  for(var i=0;i<st.n;i++){
+    var q=makeQ(i,L);
+    if(i===st.n-1 && cols===2 && st.n%2===1) q.style.gridColumn="span 2";  /* last seat takes the empty cell */
+    grid.appendChild(q);
+  }
+  for(var k=0;k<grid.children.length;k++) grid.children[k]._fit();
+  if(qpOpen) drawPanel();   /* state may have been replaced (undo, preset): redraw against it */
+  document.getElementById("cTurn").style.display=st.turnMode?"":"none";
+  renderClock();
+}
+function effRot(i,L){ return (st.p[i].rot!=null)? st.p[i].rot : L.rot[i]; }
+
+function fitLife(life,rc){
+  // choose a life font size that fits the quad
+  var big = rc==="rot90"||rc==="rot270";
+  life.style.fontFamily="var(--pix)";
+  life.style.letterSpacing="0";
+  life.style.textShadow="0 4px 0 rgba(0,0,0,.35)";
+  life.style.fontSize = big ? "13vw" : (st.n<=2 ? "22vh" : "17vh");
+}
+
+function makeQ(i,L){
+  var pl=st.p[i], rot=effRot(i,L);
+  var q=document.createElement("div");
+  q.className="q";
+  if(st.turnMode && st.active===i) q.className+=" active";
+
+  var bg=document.createElement("div"); bg.className="bg";
+  var scrim=document.createElement("div"); scrim.className="scrim";
+  if(pl.bg && pl.bg.type==="img"){
+    q.className+=" hasimg";
+    if(bgCache[i]) bg.style.backgroundImage="url("+bgCache[i]+")";
+    else idbGet("p"+i).then(function(d){ if(d){ bgCache[i]=d; bg.style.backgroundImage="url("+d+")"; } });
+  } else if(pl.bg && pl.bg.type==="card"){
+    q.className+=" hasimg";
+    if(bgCache[i]) bg.style.backgroundImage="url("+bgCache[i]+")";
+    else {
+      bg.style.backgroundImage="url("+cardSrc(pl.bg)+")";
+      if(pl.bg.cached) idbGet("p"+i).then(function(d){ if(d){ bgCache[i]=d; bg.style.backgroundImage="url("+d+")"; } });
+      else if(!LOCAL) storeCardArt(i);   /* picked before offline copies existed: keep one now */
+    }
+  } else if(pl.bg && pl.bg.type==="grad"){ bg.style.backgroundImage=pl.bg.value; }
+  else { q.style.background=pl.color; }
+
+  var rc = rot===180?"rot180":rot===90?"rot90":rot===270?"rot270":"";
+
+  // ONE rotated frame: every child is laid out in the player's own coordinate system,
+  // so all four players see the identical arrangement relative to their life number.
+  var fr=document.createElement("div"); fr.className="frame";
+  if(rot) fr.style.transform="rotate("+rot+"deg)";
+
+  var life=document.createElement("div"); life.className="life"; life.textContent=pl.life; fitLife(life,rc);
+  var delta=document.createElement("div"); delta.className="delta"; delta.style.fontFamily="var(--pix)"; delta.style.fontSize="4vh";
+  var out=document.createElement("div"); out.className="out"; out.textContent="OUT"; out.style.fontFamily="var(--pix)"; out.style.fontSize="7vh";
+  var pills=document.createElement("div"); pills.className="pills";
+
+  // tap zones: player's left = -1, player's right = +1  (always, in frame coords)
+  var zA=document.createElement("div"), zB=document.createElement("div");
+  var sA=document.createElement("div"), sB=document.createElement("div");
+  sA.className="sign"; sB.className="sign"; sA.textContent="–"; sB.textContent="+";
+  zA.className="qtap L"; zB.className="qtap R";
+  zA.appendChild(sA); zB.appendChild(sB);
+
+  function qbtn(txt,fn,extra){ var b=document.createElement("div"); b.className="qb"; b.innerHTML=(extra?('<i>'+extra+'</i>'):'')+txt;
+    b.addEventListener("click",function(e){ e.stopPropagation(); fn(); }); return b; }
+
+  // header (frame top, centred): [crown] NAME [gear]
+  var head=document.createElement("div"); head.className="qhead";
+  var cr=document.createElement("div"); cr.className="ic"+(st.monarch===i?" crownon":""); cr.innerHTML=CROWN;
+  cr.addEventListener("click",function(e){ e.stopPropagation(); snap(); st.monarch=(st.monarch===i?-1:i); save(); build(); });
+  var nm=document.createElement("div"); nm.className="pname"; nm.textContent=pl.name;
+  nm.addEventListener("click",function(e){ e.stopPropagation(); openPlayer(i); });
+  var gear=document.createElement("div"); gear.className="ic"; gear.innerHTML=GEAR;
+  gear.addEventListener("click",function(e){ e.stopPropagation(); openPlayer(i); });
+  head.appendChild(cr); head.appendChild(nm); head.appendChild(gear);
+
+  // bottom bar (near the player): quick buttons
+  var bar=document.createElement("div"); bar.className="qbot";
+  bar.appendChild(dannoBtn(i));
+  var taxBtn=qbtn("TASSA",function(){ openPanel(i,"tax"); });
+  var segBtn=qbtn("SEGNALINI",function(){ openPanel(i,"seg"); });
+  var manaBtn=qbtn("MANA",function(){ openPanel(i,"mana"); });
+  bar.appendChild(taxBtn); bar.appendChild(segBtn); bar.appendChild(manaBtn);
+  var mrow=document.createElement("div"); mrow.className="manarow";
+
+  fr.appendChild(bg); fr.appendChild(scrim);
+  fr.appendChild(zA); fr.appendChild(zB);
+  fr.appendChild(pills); fr.appendChild(delta); fr.appendChild(life); fr.appendChild(out);
+  fr.appendChild(mrow); fr.appendChild(head); fr.appendChild(bar);
+  q.appendChild(fr);
+  var aDelta=-1, bDelta=1;
+
+  var acc=0,at=null,dirty=false;
+  function render(){
+    life.textContent=pl.life;
+    function chip(box,icon,v,kind,hot){
+      var d=document.createElement("div"); d.className="mp"+(hot?" hot":"");
+      var ic=document.createElement("i"); ic.innerHTML=icon;
+      var n=document.createElement("b"); n.textContent=v;
+      d.appendChild(ic); d.appendChild(n);
+      d.addEventListener("click",function(e){ e.stopPropagation(); openPanel(i,kind); });
+      box.appendChild(d);
+    }
+    function badge(btn,label,v){ btn.innerHTML=(v?'<i><span class="mtot">'+v+'</span></i>':'')+label; }
+    pills.innerHTML="";
+    CATALOG.forEach(function(c){ if(c.k==="tax") return; var v=pl.counters[c.k]||0; if(v!==0) chip(pills,counterIcon(c.k),v,"seg",c.lethal&&v>=c.lethal); });
+    (pl.custom||[]).forEach(function(cu){ if(cu.value!==0) chip(pills,counterIcon(null,cu.name),cu.value,"seg",false); });
+    mrow.innerHTML="";
+    MANA.forEach(function(m){ var v=(pl.mana||{})[m[0]]||0; if(v>0) chip(mrow,manaIcon(m[0]),v,"mana",false); });
+    var segN=pills.children.length;
+    badge(manaBtn,"MANA",manaTotal(pl)); badge(taxBtn,"TASSA",pl.counters.tax||0); badge(segBtn,"SEGNALINI",segN);
+    // (commander damage is shown on the DANNO corner button)
+    q.className=q.className.replace(" dead","").replace(" risk","");
+    if(isDead(pl)) q.className+=" dead";
+    else if(pl.life<=0) q.className+=" risk";
+  }
+  function bump(n){
+    if(!dirty){ snap(); dirty=true; setTimeout(function(){ dirty=false; },900); }
+    if(!st.match.running && !st.match.paused){ st.match.running=true; }
+    pl.life+=n; acc+=n; vib(12); sfx("tick");
+    delta.textContent=(acc>0?"+":"")+acc; delta.className="delta show";
+    if(at)clearTimeout(at); at=setTimeout(function(){ delta.className="delta"; acc=0; },1200);
+    life.textContent=pl.life; render(); saveSoft();
+  }
+  tapRepeat(zA,function(){ bump(aDelta); });
+  tapRepeat(zB,function(){ bump(bDelta); });
+  /* quarter-turn seats: give the frame the quad's swapped size so nothing is clipped */
+  q._fit=function(){
+    if(rot!==90 && rot!==270) return;
+    var w=q.clientWidth, h=q.clientHeight;
+    fr.style.inset="auto"; fr.style.width=h+"px"; fr.style.height=w+"px";
+    fr.style.left=((w-h)/2)+"px"; fr.style.top=((h-w)/2)+"px";
+    life.style.fontSize=Math.round(Math.min(h/2.6, w/2.4))+"px";
+  };
+  q._render=render; render();
+  return q;
+}
+/* ---------- player panel: one big panel in the middle, turned toward the player who opened it ---------- */
+var qpEl=document.getElementById("qp"), qpOpen=null;   /* {i, kind} */
+function qpSpec(i,kind){
+  var pl=st.p[i]; pl.mana=pl.mana||{}; pl.custom=pl.custom||[];
+  if(kind==="dmg"){   /* commander damage received: one token per opposing commander, damage also costs life */
+    var items=[];
+    for(var k=0;k<st.n;k++){ if(k===i) continue; (function(k){
+      var opp=st.p[k], two=(opp.cmdrs||[]).length>=2;
+      (two?[0,1]:[0]).forEach(function(slot){
+        var key=k+"|"+slot, cn=two?((opp.cmdrs[slot]&&opp.cmdrs[slot].name)||""):"";
+        if(two && (!cn || /^Comandante( \d)?$/.test(cn))) cn=opp.name+" "+(slot+1);   /* unnamed partners: "Giulia 1", "Giulia 2" */
+        items.push({icon:textTok(opp.color,initials(opp.name)+(two?String(slot+1):""),"#fff"), step:1, lethal:21,
+          label:two?cn:opp.name,   /* partners: the token says whose, the label says which commander */
+          get:function(){ return pl.cmdDmg[key]||0; },
+          set:function(v){ v=Math.max(0,v); pl.life-=v-(pl.cmdDmg[key]||0); pl.cmdDmg[key]=v; }});
+      });
+    })(k); }
+    /* one toggle per opponent: 1 or 2 commanders (partner); damage stays separate per commander */
+    var toggles=[];
+    for(var k2=0;k2<st.n;k2++){ if(k2===i) continue; (function(k){
+      var opp=st.p[k], two=(opp.cmdrs||[]).length>=2;
+      toggles.push({html:'<i style="background:'+opp.color+'"></i>'+initials(opp.name)+' <b>×'+(two?2:1)+'</b>', on:two,
+        click:function(){ setCmdrCount(k,two?1:2); toast(opp.name+": "+(two?"1 comandante":"2 comandanti (partner)")); }});
+    })(k2); }
+    return { items:items, info:function(){ return "VITA "+pl.life; }, actions:[], toggles:toggles, togglesTitle:"PARTNER" };
+  }
+  if(kind==="mana") return { info:function(t){ return t?"TOTALE "+t:""; },
+    items:MANA.map(function(m){ return {icon:manaIcon(m[0]), step:1,
+      get:function(){ return pl.mana[m[0]]||0; }, set:function(v){ pl.mana[m[0]]=Math.max(0,v); }}; }),
+    actions:[["SVUOTA",function(){ clearMana(pl); }]] };
+  if(kind==="tax") return {
+    items:[{icon:counterIcon("tax"), step:2,
+      get:function(){ return pl.counters.tax||0; }, set:function(v){ pl.counters.tax=Math.max(0,v); }}],
+    actions:[["AZZERA",function(){ pl.counters.tax=0; }]] };
+  var items=CATALOG.filter(function(c){ return c.k!=="tax"; }).map(function(c){ return {icon:counterIcon(c.k), step:1, lethal:c.lethal,
+    get:function(){ return pl.counters[c.k]||0; }, set:function(v){ pl.counters[c.k]=Math.max(0,v); }}; });
+  pl.custom.forEach(function(cu){ items.push({icon:counterIcon(null,cu.name), step:1,
+    get:function(){ return cu.value; }, set:function(v){ cu.value=v; }}); });
+  return { items:items,
+    actions:[["+ NUOVO",function(){ var nm=prompt("Nome contatore:"); if(nm&&nm.trim()){ pl.custom.push({name:nm.trim(),value:0}); return "redraw"; } }],
+             ["AZZERA",function(){ pl.counters=pl.counters.tax?{tax:pl.counters.tax}:{}; pl.custom=[]; return "redraw"; }]] };
+}
+function openPanel(i,kind){ qpOpen={i:i,kind:kind}; drawPanel(); }
+function closePanel(){ qpOpen=null; qpEl.className=""; qpEl.innerHTML=""; save(); build(); }
+qpEl.addEventListener("click",function(e){ if(e.target===qpEl) closePanel(); });   /* tap outside = close */
+function drawPanel(){
+  var i=qpOpen.i, kind=qpOpen.kind, pl=st.p[i], spec=qpSpec(i,kind);
+  var rot=effRot(i,layoutFor()), side=(rot===90||rot===270);
+  var vw=window.innerWidth, vh=window.innerHeight, W=side?vh:vw, H=side?vw:vh;
+  qpEl.innerHTML=""; qpEl.className="on";
+  var box=document.createElement("div"); box.className="mpanel";
+  box.style.width=Math.round(W*0.96)+"px"; box.style.height=Math.round(H*0.94)+"px";
+  box.style.transform="translate(-50%,-50%) rotate("+rot+"deg)";
+  /* FF68 has no container queries: derive the panel sizes here, in px */
+  var Hb=H*0.94, bx=box.style;
+  function cl(mn,pct,mx){ return Math.round(Math.max(mn,Math.min(Hb*pct/100,mx)))+"px"; }
+  bx.setProperty("--row1",Math.round(Math.max(44,Math.min(Hb*0.12,84)))+"px");
+  bx.setProperty("--row2",Math.round(Math.max(34,Math.min(Hb*0.11,66)))+"px");
+  bx.setProperty("--dot",cl(12,5,22)); bx.setProperty("--fsname",cl(11,6.5,22)); bx.setProperty("--fsx",cl(14,6,22));
+  bx.setProperty("--fstab",cl(8,6,13)); bx.setProperty("--fsinfo",cl(9,7,15)); bx.setProperty("--tgdot",cl(8,3.5,14)); bx.setProperty("--fslab",cl(7,4.2,12));
+  /* row 1: whose panel this is */
+  var nm=document.createElement("div"); nm.className="qpname";
+  var dot=document.createElement("i"); dot.style.background=pl.color;
+  var nt=document.createElement("span"); nt.textContent=pl.name;
+  var x=document.createElement("button"); x.className="x"; x.textContent="✕"; x.addEventListener("click",closePanel);
+  nm.appendChild(dot); nm.appendChild(nt); nm.appendChild(x);
+  /* row 2: tabs */
+  var tabs=document.createElement("div"); tabs.className="mph";
+  [["dmg","DANNO"],["tax","TASSA"],["seg","SEGNALINI"],["mana","MANA"]].forEach(function(tb){
+    var b=document.createElement("button"); b.textContent=tb[1]; if(tb[0]===kind) b.className="on";
+    b.addEventListener("click",function(){ qpOpen.kind=tb[0]; drawPanel(); }); tabs.appendChild(b);
+  });
+  var tot=document.createElement("span"); tabs.appendChild(tot);
+  /* tokens */
+  var cols=document.createElement("div"); cols.className="mpc";
+  var ni=spec.items.length, hasLab=false;
+  var landCols=ni<=8?ni:Math.ceil(ni/2);   /* up to 8 in one row, then two balanced rows */
+  var ncols=(H>W)?Math.min(ni,3):landCols, nrows=Math.ceil(ni/ncols);
+  var cells=[];
+  spec.items.forEach(function(it){
+    var c=document.createElement("div"); c.className="mcol";
+    var plus=document.createElement("button"), minus=document.createElement("button"), sym=document.createElement("div"), n=document.createElement("b");
+    plus.textContent="+"; minus.textContent="–";
+    sym.className="ms"; sym.innerHTML=it.icon; sym.appendChild(n);
+    function add(d){ snap(); it.set(it.get()+d); vib(10); upd(); saveSoft(); }
+    plus.addEventListener("click",function(){ add(it.step); });
+    sym.addEventListener("click",function(){ add(it.step); });
+    minus.addEventListener("click",function(){ add(-it.step); });
+    if(it.label){ hasLab=true; var lb=document.createElement("div"); lb.className="mlab"; lb.textContent=it.label; c.appendChild(lb); }
+    c.appendChild(plus); c.appendChild(sym); c.appendChild(minus);
+    cols.appendChild(c); cells.push({it:it,sym:sym,n:n});
+  });
+  /* bottom row: actions */
+  var act=document.createElement("div"); act.className="mph";
+  spec.actions.forEach(function(ac){
+    var b=document.createElement("button"); b.textContent=ac[0];
+    b.addEventListener("click",function(){ snap(); if(ac[1]()==="redraw"){ save(); drawPanel(); rerender(); return; } upd(); saveSoft(); });
+    act.appendChild(b);
+  });
+  if(spec.toggles){
+    var tl=document.createElement("span"); tl.textContent=spec.togglesTitle; act.appendChild(tl);
+    spec.toggles.forEach(function(tg){
+      var b=document.createElement("button"); b.className="tg"+(tg.on?" on":""); b.innerHTML=tg.html;
+      b.addEventListener("click",tg.click); act.appendChild(b);
+    });
+  }
+  function upd(){
+    var t=0; cells.forEach(function(c){ var v=c.it.get(); t+=v; c.n.textContent=v;
+      c.sym.className="ms"+(v?"":" zero")+(c.it.lethal&&v>=c.it.lethal?" leth":""); });
+    tot.textContent=spec.info?spec.info(t):"";
+    rerender();
+  }
+  box.appendChild(nm); box.appendChild(tabs); box.appendChild(cols); if(act.children.length) box.appendChild(act);
+  cols.style.width="100%";
+  qpEl.appendChild(box); upd();
+  /* now the panel is laid out: size the tokens from the measured grid area */
+  var Wc=cols.clientWidth, Hc=cols.clientHeight;
+  var cw=(Wc-10*(ncols-1))/ncols, chh=(Hc-10*(nrows-1))/nrows;
+  var tok=Math.min(cw*0.86,(chh-(hasLab?18:4))/1.95);
+  tok=Math.round(Math.max(26,Math.min(tok,140)));
+  bx.setProperty("--cell",Math.floor(cw)+"px");
+  bx.setProperty("--tok",tok+"px");
+  bx.setProperty("--cbtn",Math.round(Math.max(20,Math.min(tok*0.55,54)))+"px");
+  bx.setProperty("--fscbtn",Math.round(Math.max(16,Math.min(tok*0.6,30)))+"px");
+  bx.setProperty("--fstnum",Math.round(Math.max(9,Math.min(tok*0.32,16)))+"px");
+}
+
+// mini seat-map: a grid matching the on-screen quad layout, the source player's cell lit
+function seatPip(oppIdx,lethal){
+  var L=layoutFor(), cols=L.cols, rows=Math.ceil(st.n/cols);
+  var pip=document.createElement("div"); pip.className="pipseat"+(lethal?" leth":"");
+  pip.style.gridTemplateColumns="repeat("+cols+",6px)";
+  pip.style.gridTemplateRows="repeat("+rows+",6px)";
+  for(var s=0;s<cols*rows;s++){
+    var c=document.createElement("i");
+    if(s===oppIdx){ c.className="on"; if(!lethal) c.style.background=st.p[oppIdx].color; }
+    pip.appendChild(c);
+  }
+  return pip;
+}
+function dannoBtn(i){
+  var pl=st.p[i];
+  var b=document.createElement("div"); b.className="qb qb-danno";
+  b.addEventListener("click",function(e){ e.stopPropagation(); openPanel(i,"dmg"); });
+  var lab=document.createElement("span"); lab.textContent="DANNO"; b.appendChild(lab);
+  var byOpp={};
+  for(var k in pl.cmdDmg){ var a=pl.cmdDmg[k]; if(a>0){ var p=k.split("|"); (byOpp[p[0]]=byOpp[p[0]]||{})[p[1]]=a; } }
+  var keys=Object.keys(byOpp).sort(function(x,y){return x-y;});
+  if(keys.length){
+    var row=document.createElement("div"); row.className="drow";
+    keys.forEach(function(oi){
+      var slots=Object.keys(byOpp[oi]).sort(), lethal=false;
+      var parts=slots.map(function(s){ if(byOpp[oi][s]>=21) lethal=true; return byOpp[oi][s]; });
+      var cell=document.createElement("div"); cell.className="dmini";
+      cell.appendChild(seatPip(+oi,lethal));
+      var num=document.createElement("div"); num.className="dnum"+(lethal?" leth":"");
+      num.textContent=parts.join("-");    // "3-2" = two commanders from the same player
+      cell.appendChild(num);
+      row.appendChild(cell);
+    });
+    b.appendChild(row);
+  }
+  return b;
+}
+
+
+function tapRepeat(el,fn){
+  var touchMode=false, holdT=null, repT=null, sx=0, sy=0, reps=0;
+  function begin(x,y){
+    sx=x; sy=y; reps=0; fn();
+    holdT=setTimeout(function(){
+      repT=setInterval(function(){ reps++; fn(); if(reps===8&&repT){ clearInterval(repT); repT=setInterval(fn,230); } },430);
+    },650);
+  }
+  function end(){ if(holdT){clearTimeout(holdT);holdT=null;} if(repT){clearInterval(repT);repT=null;} }
+  el.addEventListener("touchstart",function(e){ touchMode=true; if(e.cancelable) e.preventDefault(); begin(e.touches[0].clientX,e.touches[0].clientY); },{passive:false});
+  el.addEventListener("touchmove",function(e){ var t=e.touches[0]; if(Math.abs(t.clientX-sx)>24||Math.abs(t.clientY-sy)>24) end(); },{passive:true});
+  el.addEventListener("touchend",function(e){ if(e.cancelable) e.preventDefault(); end(); },{passive:false});
+  el.addEventListener("touchcancel",end);
+  el.addEventListener("mousedown",function(e){ if(touchMode) return; begin(e.clientX,e.clientY); });
+  window.addEventListener("mouseup",function(){ if(!touchMode) end(); });
+}
+function rerender(){ for(var i=0;i<grid.children.length;i++) if(grid.children[i]._render) grid.children[i]._render(); }
+
+/* ---------- clock ---------- */
+var clockEl=document.getElementById("clk"), turnClkEl=document.getElementById("turnclk"), turnBtn=document.getElementById("cTurn");
+function fmt(s){ s=Math.max(0,Math.round(s)); var m=Math.floor(s/60); return m+":"+("0"+(s%60)).slice(-2); }
+function renderClock(){
+  clockEl.textContent = fmt(st.match.elapsed);
+  clockEl.className = "clk"+(st.match.paused?" paused":"");
+  var on=!!st.turnMode;
+  turnClkEl.style.display = on ? "" : "none";
+  turnBtn.style.display = on ? "" : "none";
+  if(on) turnClkEl.textContent = "T"+(st.turn||1)+" · "+fmt(st.match.turnElapsed);
+}
+clockEl.addEventListener("click",function(){   /* tap the clock = pause / resume */
+  st.match.paused=!st.match.paused; if(!st.match.paused) st.match.running=true;
+  save(); renderClock(); toast(st.match.paused?"Tempo in pausa":"Tempo ripartito");
+});
+var lastTick=Date.now();
+setInterval(function(){
+  var now=Date.now(), dt=Math.round((now-lastTick)/1000);
+  if(dt<1) return;
+  lastTick+=dt*1000;
+  if(dt>6*3600) dt=1;  /* device slept for hours: don't count it */
+  if(st.match.running && !st.match.paused){ st.match.elapsed+=dt; if(st.turnMode) st.match.turnElapsed+=dt; renderClock(); saveSoft(); }
+},500);
+
+/* ---------- player sheet ---------- */
+var pSheet=document.getElementById("pSheet"), pTitle=document.getElementById("pTitle"), pBody=document.getElementById("pBody");
+document.getElementById("pClose").addEventListener("click",function(){ pSheet.className="sheet"; save(); build(); });
+var filePick=document.getElementById("filePick"), fileTarget=-1, fileMode="p";
+filePick.addEventListener("change",function(){
+  var f=filePick.files[0]; filePick.value=""; if(!f||fileTarget<0) return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    var img=new Image();
+    img.onload=function(){
+      var mx=1000, sc=Math.min(1,mx/Math.max(img.width,img.height));
+      var cv=document.createElement("canvas"); cv.width=Math.max(1,Math.round(img.width*sc)); cv.height=Math.max(1,Math.round(img.height*sc));
+      cv.getContext("2d").drawImage(img,0,0,cv.width,cv.height);
+      var data; try{ data=cv.toDataURL("image/jpeg",0.82); }catch(e){ data=fr.result; }
+      bgCache[fileTarget]=data; idbSet("p"+fileTarget,data);
+      st.p[fileTarget].bg={type:"img"}; save(); openPlayer(fileTarget);
+    };
+    img.onerror=function(){ toast("Immagine non valida"); };
+    img.src=fr.result;
+  };
+  fr.readAsDataURL(f);
+});
+
+/* ---------- camera capture (live frame -> background; no photo file, nothing saved to gallery) ---------- */
+var camSheet=document.getElementById("cam"), camVid=document.getElementById("camVid"),
+    camErr=document.getElementById("camErr"), camStream=null, camTarget=-1, camFacing="environment";
+function stopCam(){ try{ if(camStream){ camStream.getTracks().forEach(function(t){ t.stop(); }); } }catch(e){} camStream=null; try{ camVid.srcObject=null; }catch(e){} }
+document.getElementById("camClose").addEventListener("click",function(){ stopCam(); camSheet.className="sheet"; });
+function openCam(i){ camTarget=i; camErr.textContent=""; orient(camSheet,effRot(i,layoutFor())); camSheet.className="sheet on"; startCam(); }
+function startCam(){
+  stopCam();
+  var md=navigator.mediaDevices;
+  if(!md||!md.getUserMedia){ camErr.textContent="Fotocamera non disponibile qui. Usa la versione online (https) o 'Foto dalla galleria'."; return; }
+  md.getUserMedia({video:{facingMode:camFacing},audio:false}).then(function(s){
+    camStream=s; camVid.srcObject=s; var p=camVid.play(); if(p&&p.catch) p.catch(function(){});
+  }).catch(function(e){ camErr.textContent="Accesso alla fotocamera negato o non disponibile."; });
+}
+document.getElementById("camFlip").addEventListener("click",function(){ camFacing=(camFacing==="environment")?"user":"environment"; startCam(); });
+document.getElementById("camShot").addEventListener("click",function(){
+  if(!camStream||camTarget<0) return;
+  var vw=camVid.videoWidth||640, vh=camVid.videoHeight||480;
+  var mx=1000, sc=Math.min(1,mx/Math.max(vw,vh));
+  var cv=document.createElement("canvas"); cv.width=Math.max(1,Math.round(vw*sc)); cv.height=Math.max(1,Math.round(vh*sc));
+  try{ cv.getContext("2d").drawImage(camVid,0,0,cv.width,cv.height); }catch(e){ camErr.textContent="Scatto non riuscito."; return; }
+  var data; try{ data=cv.toDataURL("image/jpeg",0.82); }catch(e){ data=null; }
+  var i=camTarget;
+  stopCam(); camSheet.className="sheet";
+  if(data){ bgCache[i]=data; idbSet("p"+i,data); st.p[i].bg={type:"img"}; save(); openPlayer(i); toast("Sfondo aggiornato"); }
+});
+
+function g(host,t){ var d=document.createElement("div"); d.className="grp"; d.textContent=t; host.appendChild(d); }
+
+/* turn a full-screen sheet toward a player (same rotation as their quad); quarter turns swap its box */
+var sheetRot=0;
+function orient(el,rot){
+  rot=rot||0;
+  el.style.transform=rot?"rotate("+rot+"deg)":"";
+  if(rot===90||rot===270){ var w=window.innerWidth, h=window.innerHeight;
+    el.style.inset="auto"; el.style.width=h+"px"; el.style.height=w+"px"; el.style.left=((w-h)/2)+"px"; el.style.top=((h-w)/2)+"px"; }
+  else { el.style.inset=el.style.width=el.style.height=el.style.left=el.style.top=""; }
+}
+function openPlayer(i){
+  sheetRot=effRot(i,layoutFor()); orient(pSheet,sheetRot);
+  var pl=st.p[i];
+  pTitle.textContent=pl.name; pBody.innerHTML="";
+
+  /* OUT toggle: grey = in game, red = out; tap again to bring the player back */
+  var outB=document.createElement("div"); outB.className="btn"+(pl.out?" danger":""); outB.textContent="OUT";
+  outB.addEventListener("click",function(){ snap(); pl.out=!pl.out; save(); build(); openPlayer(i); });
+  pBody.appendChild(outB);
+
+  g(pBody,"Nome");
+  var nameRow=document.createElement("div"); nameRow.className="orow";
+  var ni=document.createElement("input"); ni.type="text"; ni.value=pl.name;
+  ni.addEventListener("change",function(){ pl.name=ni.value.trim()||pl.name; pTitle.textContent=pl.name; save(); });
+  nameRow.appendChild(ni); pBody.appendChild(nameRow);
+
+  g(pBody,"Aspetto");
+  var sw=document.createElement("div"); sw.className="chips";
+  COLORS.forEach(function(c){ var s=document.createElement("div"); s.className="swatch"+((pl.bg.type==="solid"&&pl.color===c)?" sel":""); s.style.background=c;
+    s.addEventListener("click",function(){ pl.color=c; pl.bg={type:"solid"}; save(); openPlayer(i); }); sw.appendChild(s); });
+  pBody.appendChild(sw);
+  var gr=document.createElement("div"); gr.className="chips";
+  GRADS.forEach(function(v){ var s=document.createElement("div"); s.className="grad"+((pl.bg.type==="grad"&&pl.bg.value===v)?" sel":""); s.style.backgroundImage=v;
+    s.addEventListener("click",function(){ pl.bg={type:"grad",value:v}; save(); openPlayer(i); }); gr.appendChild(s); });
+  pBody.appendChild(gr);
+  var pickCardBg=document.createElement("div"); pickCardBg.className="btn"; pickCardBg.textContent="Sfondo da carta Commander";
+  pickCardBg.addEventListener("click",function(){ pickCard(function(card){
+    pl.bg={type:"card",file:card.file,url:card.url,name:card.name};
+    delete bgCache[i]; idbDel("p"+i); storeCardArt(i);
+    if(pl.cmdrs && pl.cmdrs[0] && (!pl.cmdrs[0].name || pl.cmdrs[0].name==="Comandante" || pl.cmdrs[0].name.indexOf("Comandante")===0)){ pl.cmdrs[0].name=card.name; pl.cmdrs[0].art=card.file; pl.cmdrs[0].arturl=card.url; }
+    save(); openPlayer(i);
+  }); });
+  pBody.appendChild(pickCardBg);
+  var pick=document.createElement("div"); pick.className="btn"; pick.textContent=(pl.bg.type==="img")?"Cambia foto (galleria)":"Foto dalla galleria";
+  pick.addEventListener("click",function(){ fileTarget=i; filePick.click(); });
+  pBody.appendChild(pick);
+  var cam=document.createElement("div"); cam.className="btn"; cam.textContent="Scatta foto (fotocamera)";
+  cam.addEventListener("click",function(){ openCam(i); });
+  pBody.appendChild(cam);
+  if(pl.bg.type==="img"||pl.bg.type==="card"){
+    var rm=document.createElement("div"); rm.className="btn danger"; rm.textContent="Rimuovi sfondo";
+    rm.addEventListener("click",function(){ pl.bg={type:"solid"}; delete bgCache[i]; idbDel("p"+i); save(); openPlayer(i); });
+    pBody.appendChild(rm);
+  }
+
+  g(pBody,"Comandanti");
+  pBody.appendChild(toggleRow("Ho 2 comandanti (partner)",
+    function(){ return (pl.cmdrs||[]).length>=2; },
+    function(v){ setCmdrCount(i,v?2:1); openPlayer(i); }));
+  (pl.cmdrs||[]).forEach(function(cm,slot){
+    var r=document.createElement("div"); r.className="orow";
+    var ci=document.createElement("input"); ci.type="text"; ci.value=cm.name; ci.placeholder="Nome comandante "+(slot+1);
+    ci.addEventListener("change",function(){ cm.name=ci.value.trim()||("Comandante "+(slot+1)); save(); build(); });
+    var pc=document.createElement("button"); pc.textContent="carta"; pc.style.width="72px"; pc.style.fontSize="11px"; pc.style.fontFamily="var(--pix)";
+    pc.addEventListener("click",function(){ pickCard(function(card){ cm.name=card.name; cm.art=card.file; cm.arturl=card.url; save(); openPlayer(i); }); });
+    r.appendChild(ci); r.appendChild(pc);
+    pBody.appendChild(r);
+  });
+
+  g(pBody,"Rotazione riquadro");
+  var rr=document.createElement("div"); rr.className="chips";
+  [["auto",null],["0",0],["90",90],["180",180],["270",270]].forEach(function(o){
+    var c=document.createElement("div"); c.className="chip"+((pl.rot===o[1])?" sel":""); c.textContent=o[0];
+    c.addEventListener("click",function(){ pl.rot=o[1]; save(); build(); openPlayer(i); }); rr.appendChild(c);
+  });
+  pBody.appendChild(rr);
+
+  pSheet.className="sheet on";
+}
+
+/* ---------- settings ---------- */
+var sSheet=document.getElementById("sSheet"), sBody=document.getElementById("sBody");
+document.getElementById("sClose").addEventListener("click",function(){ sSheet.className="sheet"; save(); build(); });
+document.getElementById("cMenu").addEventListener("click",openSettings);
+
+function openSettings(){
+  sBody.innerHTML="";
+  g(sBody,"Partita");
+  var nb=document.createElement("div"); nb.className="btn danger"; nb.textContent="Nuova partita";
+  nb.addEventListener("click",function(){ if(confirm("Nuova partita?")){ newGame(); sSheet.className="sheet"; toast("Nuova partita"); } });
+  sBody.appendChild(nb);
+  var who=document.createElement("div"); who.className="btn"; who.textContent="Chi inizia? (a caso)";
+  who.addEventListener("click",function(){ var r=Math.floor(Math.random()*st.n); st.active=r; st.turn=1; st.match.turnElapsed=0; save(); build(); sSheet.className="sheet"; toast("Inizia: "+st.p[r].name); vib([20,60,20]); sfx("bell"); });
+  sBody.appendChild(who);
+  var pz=document.createElement("div"); pz.className="btn"; pz.textContent=st.match.paused?"Riprendi il tempo":"Pausa il tempo";
+  pz.addEventListener("click",function(){ st.match.paused=!st.match.paused; if(!st.match.paused) st.match.running=true; save(); renderClock(); openSettings(); });
+  sBody.appendChild(pz);
+  g(sBody,"Tavolo — numero giocatori");
+  var pc=document.createElement("div"); pc.className="chips";
+  [2,3,4,5,6].forEach(function(n){ var c=document.createElement("div"); c.className="chip"+(st.n===n?" sel":""); c.textContent=n;
+    c.addEventListener("click",function(){ st.n=n; if(st.active>=n) st.active=0; if(st.monarch>=n) st.monarch=-1; save(); build(); openSettings(); }); pc.appendChild(c); });
+  sBody.appendChild(pc);
+
+  g(sBody,"Disposizione");
+  var ly=document.createElement("div"); ly.className="chips";
+  [["Griglia","grid"],["Girandola (4 giocatori)","pinwheel"]].forEach(function(o){
+    var c=document.createElement("div"); c.className="chip"+((st.layout===o[1])?" sel":""); c.textContent=o[0];
+    c.addEventListener("click",function(){ st.layout=o[1]; save(); build(); openSettings(); }); ly.appendChild(c);
+  });
+  sBody.appendChild(ly);
+
+  g(sBody,"Vita iniziale");
+  var lc=document.createElement("div"); lc.className="chips";
+  [20,30,40,60].forEach(function(n){ var c=document.createElement("div"); c.className="chip"+(st.start===n?" sel":""); c.textContent=n;
+    c.addEventListener("click",function(){ st.start=n; save(); openSettings(); }); lc.appendChild(c); });
+  var cst=document.createElement("div"); cst.className="chip"; cst.textContent="altro";
+  cst.addEventListener("click",function(){ var v=parseInt(prompt("Vita iniziale:",st.start),10); if(v>0){ st.start=v; save(); openSettings(); } });
+  lc.appendChild(cst); sBody.appendChild(lc);
+
+  g(sBody,"Preset di partenza");
+  (st.presets||[]).forEach(function(pr,idx){
+    var r=document.createElement("div"); r.className="orow";
+    var l=document.createElement("div"); l.className="lbl"; l.textContent=pr.name+"  ("+pr.n+"p, "+pr.start+")";
+    var ld=document.createElement("button"); ld.textContent="▶"; ld.style.width="46px"; ld.style.fontSize="16px";
+    ld.addEventListener("click",function(){ loadPreset(idx); sSheet.className="sheet"; toast("Preset: "+pr.name); });
+    var dl=document.createElement("button"); dl.textContent="×"; dl.style.width="46px"; dl.style.background="#7a1c1c";
+    dl.addEventListener("click",function(){ if(confirm("Elimina preset?")){ for(var s=0;s<6;s++) idbDel("preset_"+idx+"_"+s); st.presets.splice(idx,1); save(); openSettings(); } });
+    r.appendChild(l); r.appendChild(ld); r.appendChild(dl); sBody.appendChild(r);
+  });
+  var sp=document.createElement("div"); sp.className="btn"; sp.textContent="Salva gruppo attuale come preset";
+  sp.addEventListener("click",savePreset);
+  sBody.appendChild(sp);
+
+  g(sBody,"Opzioni");
+  sBody.appendChild(toggleRow("Indicatore di turno + tasto TURNO",function(){return st.turnMode;},function(v){ st.turnMode=v; }));
+  sBody.appendChild(toggleRow("Vibrazione (il browser chiede il permesso 1 volta)",function(){return st.vibrate;},function(v){ st.vibrate=v; if(v){ try{ navigator.vibrate&&navigator.vibrate(20); }catch(e){} } }));
+  sBody.appendChild(toggleRow("Suoni (dado, campanello turno)",function(){return st.sound;},function(v){ st.sound=v; if(v){ audio(); sfx("tick"); } }));
+  sBody.appendChild(toggleRow("Svuota il mana fluttuante a ogni TURNO",function(){return st.manaClear;},function(v){ st.manaClear=v; }));
+  sBody.appendChild(toggleRow("Schermo sempre acceso",function(){return st.wakeLock;},function(v){ st.wakeLock=v; wake(); }));
+
+  g(sBody,"Backup");
+  var ex=document.createElement("div"); ex.className="btn"; ex.textContent="Esporta .json"; ex.addEventListener("click",exportData);
+  var im=document.createElement("div"); im.className="btn"; im.textContent="Importa"; im.addEventListener("click",function(){ importPick.click(); });
+  sBody.appendChild(ex); sBody.appendChild(im);
+  var hard=document.createElement("div"); hard.className="btn danger"; hard.textContent="Reset totale";
+  hard.addEventListener("click",function(){ if(confirm("Cancella tutto?")){ idbKeys().then(function(ks){ ks.forEach(idbDel); }); bgCache={}; st=fresh(4,40); undoStack=[]; save(); build(); sSheet.className="sheet"; } });
+  sBody.appendChild(hard);
+
+  g(sBody,"Come si usa");
+  var tip=document.createElement("div"); tip.className="tip";
+  tip.innerHTML="&bull; Tap lato sx / dx del riquadro = &minus;1 / +1 vita<br>&bull; Tieni premuto = scorre, poi accelera<br>&bull; DANNO / TASSA / SEGNALINI / MANA = pannello del giocatore al centro, girato verso di lui (tocca il gettone = +1)<br>&bull; Nome / ingranaggio = tasto OUT e personalizzazione: nome, colore e sfondo, comandanti, rotazione<br>&bull; Corona = Monarch<br>&bull; Pannello centrale: orologio (tap = pausa / riprendi), TURNO, DADI, &#8630; annulla, schermo intero, &#8942; menu";
+  sBody.appendChild(tip);
+  var legal=document.createElement("div"); legal.className="tip"; legal.style.fontSize="9px"; legal.style.color="#888";
+  legal.innerHTML="&copy; 2026 ryugon87-code &mdash; Commander Life. Tutti i diritti riservati.<br>"+
+    "Commander Life &egrave; Fan Content non ufficiale consentito dalla Fan Content Policy. Non approvato n&eacute; sponsorizzato da Wizards of the Coast. "+
+    "Parte dei materiali utilizzati &egrave; propriet&agrave; di Wizards of the Coast. &copy; Wizards of the Coast LLC.<br>"+
+    "Immagini delle carte: Scryfall. Simboli: font &laquo;Mana&raquo; di Andrew Gioia (SIL OFL 1.1) e MTG Wiki (rad).";
+  sBody.appendChild(legal);
+  sSheet.className="sheet on";
+}
+function toggleRow(label,get,set){
+  var r=document.createElement("div"); r.className="orow";
+  var l=document.createElement("div"); l.className="lbl"; l.textContent=label;
+  var b=document.createElement("button"); b.style.width="70px"; b.style.fontSize="13px"; b.style.fontFamily="var(--pix)";
+  function upd(){ b.textContent=get()?"ON":"OFF"; b.style.background=get()?"#12b886":"#333"; }
+  b.addEventListener("click",function(){ set(!get()); save(); upd(); build(); });
+  upd(); r.appendChild(l); r.appendChild(b); return r;
+}
+function newGame(){
+  snap();
+  st.p.forEach(function(p){ p.life=st.start; p.counters={}; p.custom=[]; p.mana={}; p.cmdDmg={}; p.out=false; });
+  st.monarch=-1; st.turn=1; st.match={elapsed:0,turnElapsed:0,running:false};
+  save(); build(); renderClock();
+}
+
+/* ---------- presets ---------- */
+function savePreset(){
+  var nm=prompt("Nome del preset (es. 'Casa di Marco'):"); if(!nm) return;
+  var idx=st.presets.length;
+  var pr={name:nm.trim(),n:st.n,start:st.start,layout:st.layout,seats:[]};
+  var chain=Promise.resolve();
+  for(var s=0;s<st.n;s++){ (function(s){
+    var pl=st.p[s];
+    pr.seats.push({name:pl.name,color:pl.color,bg:JSON.parse(JSON.stringify(pl.bg)),rot:pl.rot});
+    if(pl.bg.type==="img"||pl.bg.cached){ chain=chain.then(function(){ return idbGet("p"+s).then(function(d){ if(d) idbSet("preset_"+idx+"_"+s,d); }); }); }
+  })(s); }
+  chain.then(function(){ st.presets.push(pr); save(); openSettings(); toast("Preset salvato"); });
+}
+function loadPreset(idx){
+  var pr=st.presets[idx]; if(!pr) return;
+  snap();
+  st.n=pr.n; st.start=pr.start; st.layout=pr.layout||"grid";
+  bgCache={};
+  var chain=Promise.resolve();
+  for(var s=0;s<6;s++){ (function(s){
+    if(s<pr.seats.length){
+      var sd=pr.seats[s], pl=st.p[s];
+      pl.name=sd.name; pl.color=sd.color; pl.bg=JSON.parse(JSON.stringify(sd.bg)); pl.rot=sd.rot;
+      pl.life=st.start; pl.counters={}; pl.custom=[]; pl.mana={}; pl.cmdDmg={}; pl.out=false;
+      if(sd.bg.type==="img"||sd.bg.cached){ chain=chain.then(function(){ return idbGet("preset_"+idx+"_"+s).then(function(d){ if(d){ idbSet("p"+s,d); bgCache[s]=d; } }); }); }
+      else { idbDel("p"+s); }
+    }
+  })(s); }
+  st.monarch=-1; st.active=0; st.turn=1; st.match={elapsed:0,turnElapsed:0,running:false};
+  chain.then(function(){ save(); build(); });
+}
+
+/* ---------- export / import ---------- */
+function exportData(){
+  idbKeys().then(function(keys){
+    var imgs={}, chain=Promise.resolve();
+    keys.forEach(function(k){ chain=chain.then(function(){ return idbGet(k).then(function(v){ if(v) imgs[k]=v; }); }); });
+    chain.then(function(){
+      var blob=new Blob([JSON.stringify({state:st,images:imgs})],{type:"application/json"});
+      var a=document.createElement("a"); a.href=URL.createObjectURL(blob);
+      a.download="commander-counter-backup.json"; document.body.appendChild(a); a.click();
+      setTimeout(function(){ URL.revokeObjectURL(a.href); a.remove(); },1000);
+      toast("Esportato nei Download");
+    });
+  });
+}
+var importPick=document.getElementById("importPick");
+importPick.addEventListener("change",function(){
+  var f=importPick.files[0]; importPick.value=""; if(!f) return;
+  var fr=new FileReader();
+  fr.onload=function(){
+    try{
+      var o=JSON.parse(fr.result);
+      if(!o || !o.state || !o.state.p){ toast("File non valido"); return; }
+      st=migrate(o.state); save();
+      if(o.images){ for(var k in o.images){ idbSet(k,o.images[k]); } }
+      bgCache={}; undoStack=[]; sSheet.className="sheet"; setTimeout(build,250); toast("Importato");
+    }catch(e){ toast("File non valido"); }
+  };
+  fr.readAsText(f);
+});
+
+/* ---------- dice ---------- */
+var diceSheet=document.getElementById("dice"), diceRes=document.getElementById("diceRes"),
+    diceBtns=document.getElementById("diceBtns"), d20=document.getElementById("d20"),
+    d20num=document.getElementById("d20num"), diceLabel=document.getElementById("diceLabel");
+var rolling=false, diceLog=document.getElementById("diceLog");
+document.getElementById("diceClose").addEventListener("click",function(){ diceSheet.className="sheet"; diceLog.innerHTML=""; });
+function logRoll(label,out){
+  var s=document.createElement("span"); s.innerHTML=label+" <b>"+out+"</b>";
+  diceLog.insertBefore(s,diceLog.firstChild);
+  while(diceLog.children.length>12) diceLog.removeChild(diceLog.lastChild);
+}
+function roll(sides,label){
+  if(rolling) return; rolling=true;
+  diceRes.className=""; diceRes.textContent=""; diceLabel.textContent=label||("d"+sides);
+  d20.style.display=""; d20num.textContent="";
+  d20.classList.remove("rolling"); void d20.offsetWidth; d20.classList.add("rolling");
+  vib([10,40,10,40,10]); sfx("dice");
+  setTimeout(function(){
+    d20.classList.remove("rolling");
+    var out;
+    if(sides===2){ out=Math.random()<0.5?"TESTA":"CROCE"; d20.style.display="none"; diceRes.style.fontSize="13vh"; diceRes.textContent=out; diceRes.className="show"; }
+    else if(sides<=20){ out=1+Math.floor(Math.random()*sides); d20num.textContent=out; diceRes.textContent=""; diceRes.className=""; }
+    else { out=1+Math.floor(Math.random()*sides); d20.style.display="none"; diceRes.style.fontSize="22vh"; diceRes.textContent=out; diceRes.className="show"; }
+    logRoll(label||("d"+sides), out);
+    vib(35);
+    rolling=false;
+  },1060);
+}
+[["d4",4],["d6",6],["d8",8],["d10",10],["d12",12],["d20",20],["d100",100],["Moneta",2]].forEach(function(o){
+  var b=document.createElement("button"); b.textContent=o[0];
+  b.addEventListener("click",function(){ roll(o[1],o[0]); });
+  diceBtns.appendChild(b);
+});
+function openDice(autoSides){
+  diceRes.className=""; diceRes.textContent=""; diceLabel.textContent=""; d20num.textContent="20";
+  d20.style.display=""; d20.classList.remove("rolling"); diceLog.innerHTML="";
+  diceSheet.className="sheet on";
+  if(autoSides) setTimeout(function(){ roll(autoSides,"d"+autoSides); },140);
+}
+document.getElementById("cDice").addEventListener("click",function(){ openDice(0); });
+
+/* ---------- card picker ---------- */
+var cardsSheet=document.getElementById("cards"), cardGrid=document.getElementById("cardGrid"),
+    cardSearch=document.getElementById("cardSearch"), cardCb=null, cio=null;
+document.getElementById("cardsClose").addEventListener("click",function(){ cardsSheet.className="sheet"; });
+function pickCard(cb){
+  cardCb=cb; cardSearch.value=""; renderCards("");
+  orient(cardsSheet,pSheet.className.indexOf(" on")>=0?sheetRot:0);   /* picked from a player's sheet: face that player */
+  cardsSheet.className="sheet on";
+}
+cardSearch.addEventListener("input",function(){ renderCards(cardSearch.value); });
+function norm(s){ try{ s=s.normalize("NFD").replace(/[̀-ͯ]/g,""); }catch(e){} return s.toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim(); }
+function lev(a,b){
+  if(a===b) return 0; if(!a.length) return b.length; if(!b.length) return a.length;
+  var prev=[],i,j; for(j=0;j<=b.length;j++) prev[j]=j;
+  for(i=1;i<=a.length;i++){ var cur=[i];
+    for(j=1;j<=b.length;j++){ var cost=a.charAt(i-1)===b.charAt(j-1)?0:1;
+      cur[j]=Math.min(cur[j-1]+1,prev[j]+1,prev[j-1]+cost); }
+    prev=cur; }
+  return prev[b.length];
+}
+function subseq(q,t){ var i=0; for(var j=0;j<t.length&&i<q.length;j++) if(q.charAt(i)===t.charAt(j)) i++; return i===q.length; }
+function fuzzyScore(name,q){
+  if(!q) return 1;
+  var n=norm(name), qn=norm(q); if(!qn) return 1;
+  if(n.indexOf(qn)>=0) return 1000 - n.indexOf(qn);              // substring
+  var qt=qn.split(" "), nt=n.split(" ");
+  if(qt.every(function(t){ return n.indexOf(t)>=0; })) return 700; // all tokens present
+  // per-token: prefix of a word, or close typo of a word
+  var s=0, ok=true;
+  qt.forEach(function(t){
+    var best=99;
+    nt.forEach(function(w){
+      if(w.indexOf(t)===0) best=Math.min(best,1);
+      else { var d=lev(t,w); if(d<=Math.max(1,Math.floor(t.length/4))) best=Math.min(best,1+d); }
+    });
+    if(best===99) ok=false; else s+=best;
+  });
+  if(ok) return 500 - s*20;
+  if(subseq(qn.replace(/ /g,""), n.replace(/ /g,""))) return 200; // scattered letters in order
+  var dd=lev(qn, n.slice(0,qn.length+2));
+  if(dd<=3) return 120 - dd*10;
+  return 0;
+}
+function renderCards(q){
+  cardGrid.innerHTML="";
+  if(cio && cio.disconnect) cio.disconnect();
+  if(!CARDS.length){ cardGrid.innerHTML='<div style="color:#888;font-size:12px;grid-column:1/-1">Catalogo carte non disponibile.</div>'; return; }
+  var scored=[];
+  CARDS.forEach(function(c){ var sc=fuzzyScore(c.name,q); if(sc>0) scored.push({c:c,s:sc}); });
+  scored.sort(function(a,b){ return b.s-a.s || a.c.name.localeCompare(b.c.name); });
+  if(!scored.length){ var nf=document.createElement("div"); nf.style.cssText="color:#888;font-size:12px;grid-column:1/-1"; nf.textContent='Nessun suggerimento per "'+q+'".'; cardGrid.appendChild(nf); return; }
+  var mkIO = ("IntersectionObserver" in window);
+  if(mkIO) cio=new IntersectionObserver(function(ents){ ents.forEach(function(en){ if(en.isIntersecting){ var t=en.target; t.style.backgroundImage="url("+t.getAttribute("data-src")+")"; cio.unobserve(t); } }); },{root:cardGrid.parentNode,rootMargin:"250px"});
+  scored.slice(0,80).forEach(function(o){
+    var c=o.c, src=cardSrc(c);
+    var it=document.createElement("div"); it.className="cardItem";
+    var th=document.createElement("div"); th.className="thumb"; th.setAttribute("data-src",src);
+    if(mkIO) cio.observe(th); else th.style.backgroundImage="url("+src+")";
+    var nm=document.createElement("div"); nm.className="cn"; nm.textContent=c.name;
+    it.appendChild(th); it.appendChild(nm);
+    it.addEventListener("click",function(){ cardsSheet.className="sheet"; if(cardCb) cardCb(c); });
+    cardGrid.appendChild(it);
+  });
+}
+
+/* official symbols: mana, poison (Phyrexian), energy and ticket from the "Mana" font by Andrew Gioia (SIL OFL 1.1),
+   each with a transform that centres its real bounding box in a 32x32 coin; designs (c) Wizards of the Coast */
+var SYM={"W":{"g":"<path d=\"M31.915 18.358c-2.189-1.234-3.593-1.852-4.21-1.852-0.448 0-0.799 0.344-1.052 1.032s-0.758 1.031-1.515 1.031c-0.309 0-0.94-0.112-1.895-0.336-0.533 0.814-0.8 1.334-0.8 1.558 0 0.309 0.23 0.673 0.689 1.095s0.846 0.631 1.162 0.631c0.201 0 0.473-0.042 0.817-0.127 0.344-0.083 0.574-0.126 0.689-0.126 0.345 0 0.516 0.632 0.516 1.895 0 1.207-0.28 3.059-0.842 5.558-0.73-2.863-1.502-4.295-2.315-4.295-0.113 0-0.344 0.084-0.695 0.254-0.351 0.168-0.611 0.252-0.779 0.252-0.814 0-1.543-0.743-2.189-2.232-1.291 0.197-1.937 0.857-1.937 1.98 0 0.562 0.259 1.010 0.779 1.347 0.518 0.336 0.779 0.576 0.779 0.716 0 0.759-1.109 1.924-3.327 3.495-1.178 0.842-1.993 1.431-2.441 1.768 0.392-0.505 0.785-1.164 1.179-1.978 0.448-0.926 0.673-1.642 0.673-2.148 0-0.28-0.323-0.674-0.968-1.179s-0.968-1.038-0.968-1.599c0-0.477 0.168-1.066 0.505-1.768-0.365-0.421-0.799-0.632-1.305-0.632-1.123 0-1.684 0.366-1.684 1.095 0-0.505 0-0.127 0 1.137 0.027 0.926-0.674 1.39-2.106 1.39-1.094 0-2.934-0.253-5.515-0.758 2.919-0.73 4.379-1.572 4.379-2.526 0 0.112-0.056-0.224-0.168-1.011-0.113-0.869 0.505-1.656 1.852-2.357-0.253-1.291-0.925-1.938-2.021-1.938-0.168 0-0.478 0.295-0.926 0.883-0.449 0.591-0.87 0.885-1.262 0.885-0.674 0-1.545-0.73-2.61-2.19-0.506-0.729-1.278-1.81-2.316-3.242 0.645 0.338 1.291 0.674 1.937 1.011 0.842 0.392 1.515 0.589 2.021 0.589 0.393 0 0.779-0.344 1.158-1.032s0.877-1.032 1.495-1.032c0.085 0 0.646 0.168 1.684 0.506 0.533-0.814 0.8-1.418 0.8-1.811 0-0.337-0.204-0.723-0.611-1.158s-0.779-0.652-1.116-0.652c-0.141 0-0.358 0.042-0.653 0.126-0.294 0.084-0.512 0.127-0.652 0.127-0.506 0-0.758-0.632-0.758-1.895 0-0.337 0.323-2.259 0.969-5.768-0.029 0.42 0.154 1.207 0.547 2.357 0.477 1.404 1.038 2.105 1.685 2.105 0.111 0 0.336-0.084 0.673-0.253s0.603-0.252 0.8-0.252c0.645 0 1.178 0.365 1.6 1.094l0.632 1.137c0.589 0 1.081-0.21 1.473-0.631s0.59-0.927 0.59-1.516c0-0.617-0.259-1.088-0.779-1.411s-0.78-0.568-0.78-0.737c0-0.59 0.927-1.586 2.779-2.989 1.487-1.122 2.456-1.782 2.906-1.979-1.207 1.628-1.811 2.82-1.811 3.579 0 0.393 0.238 0.815 0.716 1.263 0.589 0.533 0.926 0.912 1.010 1.137 0.28 0.647 0.252 1.53-0.084 2.653 0.758 0.534 1.333 0.8 1.727 0.8 0.813 0 1.221-0.422 1.221-1.263 0-0.084-0.035-0.351-0.105-0.8-0.071-0.449-0.091-0.702-0.064-0.758 0.112-0.393 0.884-0.59 2.316-0.59 0.898 0 2.764 0.253 5.6 0.758-0.618 0.168-1.544 0.42-2.779 0.758-1.123 0.337-1.685 0.716-1.685 1.137 0 0.197 0.070 0.533 0.211 1.010s0.211 0.828 0.211 1.053c0 0.392-0.253 0.758-0.758 1.094l-1.432 1.011c0.337 0.618 0.561 0.983 0.674 1.094 0.28 0.336 0.659 0.505 1.137 0.505 0.337 0 0.645-0.295 0.926-0.884s0.73-0.884 1.347-0.884c0.758 0 1.614 0.702 2.569 2.106 0.532 0.788 1.36 1.98 2.483 3.58zM22.569 15.917c0-1.796-0.66-3.354-1.98-4.674s-2.877-1.979-4.673-1.979c-1.825 0-3.397 0.653-4.716 1.959s-1.993 2.87-2.021 4.694c-0.029 1.796 0.638 3.347 2 4.651 1.362 1.305 2.94 1.959 4.736 1.959 1.909 0 3.501-0.625 4.778-1.874 1.278-1.248 1.902-2.827 1.875-4.736zM21.937 15.917c0 1.712-0.576 3.131-1.727 4.252-1.152 1.124-2.583 1.685-4.295 1.685-1.656 0-3.074-0.575-4.252-1.727-1.178-1.15-1.768-2.554-1.768-4.21 0-1.627 0.596-3.025 1.788-4.189 1.194-1.165 2.604-1.748 4.232-1.748s3.038 0.589 4.232 1.769c1.193 1.179 1.79 2.568 1.79 4.168z\"/>","t":"translate(6.248 6.249) scale(0.60937)"},"U":{"g":"<path d=\"M23.11 29.095c-1.903 1.937-4.248 2.905-7.033 2.905-3.126 0-5.605-1.070-7.439-3.21-1.733-2.038-2.599-4.637-2.599-7.795 0-3.397 1.478-7.271 4.433-11.62 2.411-3.566 5.248-6.692 8.509-9.375-0.476 2.175-0.713 3.72-0.713 4.637 0 2.107 0.662 4.162 1.986 6.166 1.631 2.378 2.87 4.145 3.72 5.299 1.325 2.005 1.987 3.958 1.987 5.859 0.001 2.82-0.951 5.198-2.852 7.133zM23.058 18.216c-0.509-1.138-1.104-1.893-1.784-2.268 0.102 0.204 0.153 0.493 0.153 0.867 0 0.714-0.204 1.732-0.612 3.057l-0.662 2.038c0 1.189 0.593 1.784 1.783 1.784 1.256 0 1.885-0.833 1.885-2.497 0-0.848-0.254-1.842-0.764-2.981z\"/>","t":"translate(6.250 6.250) scale(0.60938)"},"B":{"g":"<path d=\"M31.406 15.477c0 2.089-0.76 3.513-2.279 4.273-0.444 0.222-1.836 0.522-4.178 0.902-1.519 0.254-2.278 0.839-2.278 1.756v3.845c0 0.16 0.047 0.649 0.142 1.472l0.143 1.52c0 0.475-0.111 1.251-0.333 2.327-0.601 0.126-1.298 0.268-2.089 0.428-0.254-0.951-0.38-1.599-0.38-1.948 0-0.157 0.040-0.396 0.119-0.712 0.078-0.316 0.12-0.553 0.12-0.713 0-0.22-0.197-0.838-0.59-1.85h-0.736c-0.098 0.158-0.13 0.364-0.098 0.617 0.126 0.538 0.174 0.997 0.143 1.377-0.538 0.38-1.282 0.886-2.232 1.519-0.222-0.063-0.3-0.095-0.238-0.095v-3.371c-0.062-0.157-0.221-0.22-0.475-0.19h-0.569l-0.569 4.462c-0.444 0.032-0.981 0.032-1.614 0-0.223-1.044-0.617-2.594-1.187-4.652h-0.38c-0.349 1.109-0.538 1.711-0.57 1.805 0 0.126 0.039 0.371 0.119 0.735 0.078 0.364 0.118 0.609 0.118 0.736 0 0.095-0.032 0.332-0.095 0.712l-0.143 1.139c-0.064 0.063-0.143 0.095-0.237 0.095-0.949 0-1.583-0.237-1.899-0.711-0.316-0.475-0.444-1.14-0.38-1.995l0.38-5.696c0-0.095 0.031-0.222 0.095-0.38 0.062-0.158 0.095-0.269 0.095-0.332 0-0.254-0.269-0.76-0.807-1.52-0.094-0.031-0.586-0.143-1.471-0.333-0.539-0.126-1.599-0.348-3.181-0.665-2.185-0.41-3.276-2.167-3.276-5.269 0-4.621 1.9-8.466 5.698-11.536 0.157 0.855 0.427 1.993 0.806 3.418 0.285 0.064 0.903 0.206 1.852 0.427 0.191 0.064 1.156 0.412 2.897 1.045-0.887-0.538-2.042-1.408-3.466-2.611-0.538-0.633-0.807-1.692-0.807-3.18 0-0.348 0.602-0.76 1.805-1.236 1.075-0.443 1.883-0.695 2.421-0.759 1.709-0.22 3.022-0.333 3.941-0.333 3.955 0 7.151 1.014 9.588 3.039-0.79 0.918-2.152 1.898-4.082 2.942 0.76 0.032 1.868-0.268 3.323-0.902 1.455-0.632 2.073-0.949 1.852-0.949 0.253 0 0.76 0.507 1.52 1.519 0.569 0.759 1.028 1.441 1.377 2.041 1.012 1.805 1.692 3.751 2.042 5.839 0 0.729 0.015 1.251 0.047 1.567v0.38h0.001zM13.224 16.332c0-1.361-0.594-2.651-1.78-3.87s-2.461-1.827-3.822-1.827c-1.203 0-2.263 0.51-3.181 1.529s-1.377 2.151-1.377 3.393c0 1.082 0.522 1.784 1.567 2.102 0.665 0.192 1.597 0.303 2.801 0.334h2.611c2.119 0.032 3.181-0.522 3.181-1.661zM18.398 22.219v-1.472c-0.221-0.411-0.443-0.838-0.664-1.282-0.19-0.634-0.538-1.52-1.045-2.659l-0.523 5.555c0 0.444-0.095 0.665-0.285 0.665-0.126 0-0.221-0.031-0.285-0.094-0.222-3.355-0.333-4.811-0.333-4.369v-1.661c-0.064-0.096-0.142-0.143-0.237-0.143-1.077 1.109-1.614 2.897-1.614 5.365 0 1.361 0.125 2.2 0.379 2.517 0.254-0.063 0.538-0.174 0.855-0.332 0.126-0.064 0.49-0.095 1.093-0.095 0.6 0 1.329 0.19 2.183 0.569 0.316 0 0.475-0.854 0.475-2.562zM29.127 15.604c0-1.275-0.475-2.413-1.424-3.416s-2.042-1.505-3.275-1.505c-1.329 0-2.572 0.608-3.727 1.827s-1.733 2.492-1.733 3.822c0 1.108 0.538 1.661 1.614 1.661h5.459c2.057-0.031 3.086-0.828 3.086-2.389z\"/>","t":"translate(6.248 6.250) scale(0.60937)"},"R":{"g":"<path d=\"M30.857 22.306c-1.393 3.322-4.16 4.983-8.304 4.983-0.759 0-1.583 0.095-2.468 0.284-1.329 0.285-1.993 0.681-1.993 1.188 0 0.158 0.11 0.339 0.332 0.545 0.221 0.206 0.412 0.308 0.569 0.308-0.791 0-0.253 0.024 1.613 0.071s3.038 0.071 3.512 0.071c-2.752 1.613-7.356 2.356-13.81 2.23-2.12-0.031-3.939-0.965-5.457-2.8-1.488-1.741-2.231-3.686-2.231-5.837 0-2.277 0.767-4.216 2.302-5.814 1.533-1.596 3.441-2.396 5.718-2.396 0.506 0 1.178 0.111 2.017 0.332s1.4 0.332 1.684 0.332c1.17 0 2.626-0.482 4.367-1.448s2.563-1.448 2.468-1.448c-0.317 3.322-1.424 5.553-3.323 6.691-1.36 0.791-2.040 1.566-2.040 2.325 0 0.475 0.285 0.855 0.854 1.14 0.443 0.222 0.933 0.333 1.471 0.333 0.823 0 1.63-0.506 2.421-1.518 0.79-1.013 1.139-1.93 1.044-2.753-0.095-0.949-0.031-2.089 0.19-3.416 0.063-0.38 0.292-0.846 0.687-1.399s0.752-0.894 1.068-1.021c0 0.284-0.103 0.759-0.309 1.423s-0.308 1.156-0.308 1.471c0 0.696 0.189 1.234 0.569 1.613 0.569-0.221 1.075-0.933 1.519-2.136 0.379-0.917 0.6-1.803 0.664-2.657-1.329-0.063-2.603-0.664-3.82-1.804s-1.827-2.373-1.827-3.701c0-0.221 0.031-0.443 0.095-0.665 0.189 0.285 0.474 0.728 0.853 1.329 0.538 0.791 0.95 1.186 1.235 1.186 0.379 0 0.569-0.396 0.569-1.186 0-1.012-0.27-1.93-0.807-2.752-0.601-0.981-1.377-1.471-2.326-1.471-0.443 0-1.108 0.238-1.992 0.712-0.887 0.474-1.694 0.712-2.42 0.712-0.222 0-1.204-0.286-2.943-0.855 3.068-0.505 4.603-0.964 4.603-1.376 0-1.075-2.104-1.804-6.311-2.183-0.412-0.031-1.171-0.095-2.278-0.19 0.126-0.158 1.028-0.332 2.706-0.522 1.423-0.157 2.42-0.237 2.989-0.237 7.529 0 12.307 3.655 14.332 10.963 0.348-0.288 0.523-0.77 0.523-1.443 0-0.866-0.253-1.957-0.759-3.272-0.191-0.513-0.491-1.283-0.902-2.309 2.594 3.306 3.892 6.438 3.892 9.394 0 1.558-0.365 2.972-1.092 4.243-0.474 0.859-1.361 1.955-2.657 3.29-1.297 1.335-2.183 2.368-2.658 3.099 1.74-0.474 2.88-0.838 3.418-1.092 1.201-0.537 2.293-1.344 3.274-2.42 0 0.412-0.174 1.030-0.522 1.852zM10.166 3.656c0 0.569-0.317 0.933-0.949 1.091l-1.234 0.19c-0.443 0.221-1.092 1.092-1.946 2.61-0.095-0.474-0.237-1.138-0.427-1.993-0.285 0.032-0.759 0.285-1.423 0.759-0.285 0.221-0.744 0.553-1.377 0.996 0.191-1.139 0.823-2.292 1.899-3.464 1.139-1.296 2.246-1.945 3.322-1.945 1.423 0 2.135 0.586 2.135 1.756zM18.424 8.022c0 0.538-0.293 0.989-0.878 1.353s-1.163 0.546-1.732 0.546c-0.759 0-1.44-0.427-2.040-1.282-0.729-1.044-1.472-1.724-2.231-2.042 0.158-0.157 0.348-0.237 0.57-0.237 0.285 0 0.766 0.221 1.447 0.664s1.115 0.665 1.306 0.665c0.158 0 0.419-0.221 0.783-0.665s0.767-0.664 1.21-0.664c1.044 0 1.566 0.554 1.566 1.661z\"/>","t":"translate(5.641 6.250) scale(0.60938)"},"G":{"g":"<path d=\"M31.729 17.957c0 0.601-0.232 1.14-0.698 1.621s-0.998 0.72-1.598 0.72c-0.959 0-1.666-0.45-2.115-1.35l-2.115-0.090c-0.451 0-1.336 0.196-2.656 0.585-1.41 0.39-2.221 0.705-2.431 0.945-0.33 0.36-0.599 1.2-0.81 2.521-0.181 1.080-0.27 1.875-0.27 2.386 0 0.809 0.127 1.403 0.382 1.778s0.78 0.69 1.575 0.945c0.794 0.255 1.283 0.398 1.463 0.428 0.12 0 0.314-0.015 0.585-0.045h0.54c0.389 0 0.794 0.061 1.215 0.18 0.6 0.18 0.856 0.42 0.766 0.721-0.421-0.060-1.155 0.030-2.205 0.27l1.26 0.63c0 0.36-0.51 0.54-1.53 0.54-0.271 0-0.638-0.060-1.104-0.179-0.465-0.121-0.773-0.18-0.922-0.18h-0.585c-0.030 0.3-0.12 0.749-0.27 1.35-0.511-0.030-1.11-0.331-1.8-0.9s-1.125-0.855-1.305-0.855c-0.181 0-0.436 0.286-0.766 0.855-0.331 0.569-0.495 0.96-0.495 1.17-0.39-0.21-0.719-0.601-0.991-1.17-0.12-0.391-0.255-0.78-0.404-1.17-0.3 0.030-0.856 0.661-1.665 1.891h-0.226c-0.060-0.091-0.286-0.721-0.675-1.891-0.93-0.3-1.8-0.45-2.611-0.45-0.39 0-0.99 0.090-1.8 0.27l-1.26-0.089c0.179-0.18 0.704-0.525 1.575-1.035 1.020-0.6 1.8-0.901 2.34-0.901 0.089 0 0.208 0.015 0.36 0.045 0.149 0.031 0.27 0.045 0.36 0.045 0.208 0 0.547-0.112 1.012-0.338 0.465-0.224 0.735-0.427 0.809-0.607 0.076-0.182 0.114-0.646 0.114-1.396 0-1.71-0.45-2.985-1.351-3.825-0.781-0.75-2.070-1.29-3.871-1.621-0.48 1.71-1.83 2.566-4.050 2.566-0.721 0-1.441-0.435-2.16-1.305s-1.079-1.666-1.079-2.386c0-1.11 0.464-2.025 1.394-2.747-0.749-0.779-1.125-1.574-1.125-2.384 0-0.751 0.232-1.41 0.698-1.982 0.465-0.569 1.073-0.899 1.823-0.99-0.060-0.959 0.255-1.62 0.945-1.98-0.33-0.329-0.495-0.914-0.495-1.754 0-0.99 0.33-1.816 0.99-2.476s1.485-0.991 2.475-0.991c1.081 0 1.966 0.377 2.656 1.126 0.87-2.97 2.746-4.456 5.625-4.456 1.5 0 2.82 0.6 3.961 1.801 0.42 0.45 0.63 0.69 0.63 0.719-0.36 0-0.179-0.068 0.54-0.202s1.244-0.203 1.576-0.203c1.169 0 2.205 0.435 3.105 1.305 0.78 0.78 1.32 1.77 1.621 2.97 0.209 0.030 0.54 0.12 0.99 0.269 0.659 0.332 0.99 0.9 0.99 1.711 0 0.151-0.121 0.436-0.36 0.855 1.92 1.080 2.88 2.58 2.88 4.501 0 0.54-0.21 1.291-0.63 2.251 0.78 0.449 1.17 1.11 1.17 1.98zM13.186 19.937v-0.585c0-0.69-0.337-1.32-1.012-1.89s-1.358-0.855-2.048-0.855c-0.841 0-1.62 0.195-2.341 0.584 1.59-0.089 3.391 0.826 5.4 2.746zM12.377 14.357c-0.45-0.511-0.84-1.036-1.171-1.576-1.26 0.33-1.89 0.705-1.89 1.124 0.36-0.029 0.885 0.038 1.575 0.203s1.186 0.248 1.486 0.248zM15.123 12.961v-1.98c-0.721-0.12-1.157-0.18-1.305-0.18v0.675l1.305 1.486zM20.973 11.701c-0.36-0.15-1.036-0.45-2.025-0.9v3.87c1.41-0.811 2.084-1.801 2.025-2.97zM23.447 17.012l-0.989-1.215c-0.6 0.42-1.208 0.848-1.823 1.283s-1.148 0.923-1.597 1.463c1.35-0.721 2.821-1.23 4.41-1.531z\"/>","t":"translate(6.252 6.249) scale(0.60936)"},"C":{"g":"<path d=\"M13.407 5.933c1.013-1.434 1.676-3.071 2.587-4.569 0.88 1.447 1.519 3.030 2.483 4.426 2.052 3.033 4.694 5.67 7.727 7.722 1.401 0.967 2.987 1.608 4.434 2.495-1.456 0.868-3.038 1.512-4.436 2.478-3.081 2.085-5.76 4.771-7.821 7.869-0.919 1.357-1.536 2.886-2.389 4.279-0.882-1.444-1.521-3.028-2.486-4.424-2.054-3.030-4.687-5.678-7.725-7.724-1.396-0.962-2.977-1.603-4.419-2.493 1.5-0.899 3.129-1.569 4.564-2.575 2.924-2.006 5.47-4.566 7.481-7.486zM7.373 15.999c3.358 2.334 6.29 5.258 8.617 8.621 2.339-3.356 5.256-6.3 8.631-8.617-3.366-2.334-6.295-5.263-8.631-8.624-2.334 3.356-5.256 6.288-8.617 8.619z\"/>","t":"translate(5.343 5.344) scale(0.66607)"},"poison":{"g":"<path d=\"M25 15.976c0.019-1.745-0.535-3.507-1.622-4.874-0.525-0.578-0.957-1.237-1.513-1.783-1.226-1.217-3.061-1.298-4.538-2.064-0.086-0.77-0.367-1.54-0.197-2.316 0.052-0.258 0.128-0.52-0.009-0.767-0.387-0.892-0.055-1.861-0.123-2.791-0.052-0.486-0.019-1.081-0.481-1.381-0.108 1.011-0.48 1.952-0.781 2.912-0.139 0.748-0.139 1.527-0.461 2.232 0.204 0.715-0.2 1.316-0.639 1.844-0.969 0.496-2.121 0.614-2.964 1.342-0.601 0.51-1.25 0.957-1.923 1.372-0.505 0.631-1.063 1.24-1.288 2.038-0.902 1.089-1.008 2.551-1.52 3.826-0.010 1.894 0.374 3.932 1.584 5.45 0.865 0.714 1.47 1.675 2.334 2.39 0.829 0.495 1.715 0.902 2.571 1.348 0.558 0.13 1.135 0.194 1.69 0.346 0.451 2.321 0.758 4.699 1.663 6.901 0.3-0.904 0.264-1.872 0.523-2.786 0.365-1.351-0.384-2.756 0.038-4.082 0.633-0.566 1.688-0.198 2.39-0.684 1.336-0.824 2.75-1.626 3.719-2.887 0.361-0.725 1.119-1.266 1.119-2.135 0.006-1.171 0.689-2.267 0.428-3.45zM15.082 23.137c-0.968-0.235-1.87-0.698-2.682-1.264-0.874-0.582-1.2-1.669-2.062-2.264-0.807-0.964-0.633-2.28-0.963-3.421 0.133-0.796 0.289-1.586 0.372-2.392 0.394-0.639 1.001-1.148 1.17-1.917 0.577-0.827 1.456-1.399 2.161-2.116 0.513-0.592 1.33-0.342 2.005-0.365-0.067 0.653-0.12 1.328 0.043 1.973 0.080 0.396 0.258 0.786 0.197 1.2-0.135 0.881 0.196 1.765-0.038 2.636-0.471 1.821 0.043 3.66 0.088 5.496-0.067 0.813-0.105 1.633-0.29 2.433zM22.422 19.686c-0.641 0.456-1.188 1.016-1.747 1.562-0.973 0.673-1.934 1.385-3.092 1.721 0.105-0.826 0.206-1.675-0.057-2.484-0.646-1.827 0.146-3.737 0.279-5.584-0.118-1.098-0.005-2.27-0.509-3.281-0.066-0.76 0.263-1.494 0.485-2.209 0.765 0.305 1.485 0.717 2.121 1.247 0.769 0.576 1.946 0.95 2.118 2.024 0.088 0.706 0.86 1.132 0.838 1.854-0.048 1.716 0.188 3.511-0.437 5.149z\"/>","t":"translate(6.250 6.250) scale(0.60936)"},"energy":{"g":"<path d=\"M20.347 2.509c0.445-0.071 0.871-0.225 1.312-0.319-0.005 0.177 0.029 0.351 0.049 0.527 0.022 0.708 0.142 1.408 0.206 2.113 0.147 1.090 0.34 2.174 0.575 3.249 0.093 0.417 0.158 0.841 0.282 1.25 0.135 0.437 0.183 0.898 0.352 1.326 0.141 0.504 0.286 1.007 0.47 1.497 0.123 0.289 0.202 0.593 0.307 0.889 0.151 0.522 0.409 1.004 0.605 1.51 0.1 0.283 0.239 0.526 0.349 0.804 0.164 0.415 0.36 0.753 0.568 1.125 0.391 0.736 0.623 1.149 0.928 1.529 0.17 0.273 0.358 0.552 0.573 0.793 0.118 0.15 0.294 0.28 0.311 0.485-0.26 0.095-0.509 0.218-0.763 0.328-0.767 0.254-1.51 0.577-2.241 0.921-1.012 0.434-1.97 0.98-2.908 1.554-1.41 0.853-2.754 1.82-3.958 2.947-0.768 0.72-1.505 1.475-2.168 2.293-0.245 0.303-0.482 0.614-0.681 0.95-0.205 0.347-0.468 0.656-0.676 1.001-0.108 0.178-0.204 0.365-0.332 0.531-0.14-0.169-0.248-0.361-0.36-0.549-0.863-1.422-1.924-2.722-3.123-3.875-1.407-1.363-3-2.523-4.683-3.522-0.863-0.493-1.747-0.949-2.641-1.384-0.237-0.123-0.503-0.179-0.728-0.327-0.635-0.311-1.315-0.514-1.958-0.806 0.167-0.332 0.409-0.617 0.621-0.92 0.445-0.613 0.825-1.268 1.192-1.929 0.956-1.735 1.664-3.596 2.218-5.495 0.569-1.911 0.938-3.876 1.189-5.852 0.095-0.744 0.162-1.491 0.211-2.24 0.003-0.213 0.021-0.426 0.046-0.638 0.215 0.004 0.425 0.051 0.632 0.11 0.699 0.198 1.415 0.329 2.13 0.452 1.138 0.189 2.281 0.355 3.434 0.409 0.734 0.043 1.469 0.105 2.205 0.097 0.706 0.003 1.409-0.056 2.113-0.101 0.658-0.050 1.315-0.12 1.967-0.228 0.555-0.092 0.66-0.104 0.727-0.117 0.562-0.105 1.101-0.217 1.648-0.385zM17.223 4.606c-0.679 0.248-1.391 0.382-2.099 0.517-0.552 0.066-1.106 0.128-1.663 0.112-1.083 0.025-2.178-0.135-3.187-0.538-0.013 0.125-0.007 0.251 0.014 0.375 0.075 0.516 0.104 1.040 0.041 1.558-0.079 1.147-0.391 2.263-0.794 3.335-0.099 0.273-0.239 0.532-0.293 0.82-1.009 2.266-2.361 4.366-3.892 6.312-0.148 0.188-0.313 0.364-0.437 0.57 0.227 0.004 0.438-0.086 0.656-0.136 1.126-0.291 2.273-0.511 3.43-0.621 0.795-0.106 1.6-0.079 2.401-0.080 0.897 0.005 1.792 0.132 2.657 0.367 0.036 0.078 0.012 0.165-0.005 0.244-0.287 0.936-0.457 1.904-0.566 2.875-0.131 1.177-0.113 2.365-0.093 3.548 0.067 1.209 0.169 2.42 0.409 3.61 0.095-0.418 0.147-0.845 0.251-1.26 0.243-1.057 0.605-2.084 1.017-3.086 0.699-1.68 1.558-3.289 2.494-4.849 1.014-1.675 2.109-3.301 3.295-4.86 0.1-0.103 0.055-0.251 0.058-0.379-0.094 0.004-0.189 0.007-0.281 0.027-0.496 0.11-1 0.179-1.503 0.259-0.357 0.040-0.712 0.108-1.072 0.116 0.047 0.013 0.095 0.026 0.144 0.039-0.206-0.014-0.413-0.004-0.619 0.005-0.54 0.077-1.087 0.041-1.63 0.053-0.527-0.011-1.058 0.025-1.582-0.053-0.447-0.003-0.88-0.131-1.324-0.163-0.029-0.439 0.090-0.869 0.168-1.297 0.563-2.636 1.965-5.045 3.789-7.012 0.127-0.137 0.335-0.241 0.432-0.423-0.063-0.061-0.147-0.004-0.216 0.011z\"/>","t":"translate(6.382 4.704) scale(0.70596)"},"ticket":{"g":"<path d=\"M9.965 0.038c0.47-0.045 0.957-0.049 1.41 0.104 0.695 0.223 1.382 0.465 2.066 0.717 0.778 0.272 1.394 0.923 1.685 1.686 0.202 0.495 0.133 1.042 0.211 1.559 0.058 0.344 0.273 0.647 0.545 0.858 0.439 0.335 1.064 0.39 1.564 0.161 0.283-0.134 0.49-0.378 0.678-0.62 0.493-0.637 1.276-1.066 2.088-1.074 0.361-0.032 0.726 0.017 1.070 0.131 0.673 0.212 1.338 0.447 2.002 0.686 0.381 0.148 0.779 0.29 1.085 0.572 0.59 0.526 1.029 1.276 1.017 2.085-0.014 0.252 0.022 0.516-0.067 0.757-2.519 7.34-5.051 14.676-7.594 22.007-0.147 0.382-0.232 0.797-0.491 1.125-0.584 0.875-1.7 1.311-2.728 1.169-0.28-0.037-0.544-0.137-0.812-0.218-0.67-0.22-1.337-0.454-1.993-0.713-0.877-0.309-1.531-1.113-1.742-2.007-0.128-0.55 0.025-1.169-0.292-1.669-0.368-0.626-1.224-0.873-1.878-0.571-0.286 0.112-0.495 0.345-0.678 0.582-0.413 0.553-1.038 0.941-1.709 1.093-0.49 0.085-1.005 0.076-1.48-0.084-0.737-0.231-1.464-0.489-2.183-0.772-0.897-0.339-1.554-1.19-1.724-2.125-0.009-0.352-0.034-0.709 0.007-1.058 7.784-22.522 7.859-22.851 8.044-23.128 0.419-0.658 1.128-1.129 1.899-1.255zM10.073 1.033c-0.556 0.113-1.044 0.512-1.297 1.014-3.674 10.608-5.688 16.43-7.681 22.26-0.149 0.378-0.146 0.807-0.045 1.197 0.184 0.545 0.588 1.049 1.145 1.239 0.632 0.24 1.271 0.461 1.913 0.669 0.243 0.076 0.49 0.164 0.749 0.151 0.441-0.018 0.889-0.153 1.228-0.443 0.32-0.253 0.503-0.635 0.827-0.883 0.566-0.449 1.342-0.653 2.047-0.454 0.857 0.194 1.569 0.895 1.771 1.751 0.135 0.474-0.001 0.983 0.178 1.448 0.199 0.54 0.649 0.99 1.198 1.17 0.651 0.241 1.306 0.473 1.964 0.696 0.492 0.192 1.070 0.213 1.558 0.001 0.45-0.214 0.875-0.563 1.031-1.052 3.19-9.228 5.422-15.684 7.634-22.147 0.196-0.521 0.126-1.127-0.167-1.598-0.243-0.375-0.595-0.704-1.028-0.839-0.728-0.268-1.461-0.525-2.199-0.765-0.27-0.099-0.562-0.073-0.842-0.057-0.557 0.054-1.037 0.415-1.362 0.854-0.298 0.407-0.728 0.714-1.21 0.864-0.722 0.236-1.547 0.071-2.15-0.383-0.548-0.416-0.934-1.080-0.927-1.779-0.031-0.327-0.012-0.666-0.11-0.983-0.215-0.517-0.613-0.996-1.158-1.178-0.594-0.227-1.197-0.434-1.801-0.632-0.403-0.15-0.843-0.203-1.267-0.12zM10.224 1.895c-0.277 0.086-0.545 0.274-0.633 0.562-3.594 10.35-5.616 16.217-7.636 22.085-0.071 0.197-0.105 0.41-0.068 0.618 0.039 0.367 0.322 0.675 0.663 0.798 0.576 0.216 1.16 0.412 1.745 0.601 0.267 0.074 0.549 0.184 0.827 0.098 0.292-0.079 0.495-0.323 0.687-0.542 0.551-0.719 1.413-1.199 2.321-1.26 0.931-0.079 1.886 0.264 2.556 0.913 0.492 0.453 0.838 1.065 0.94 1.729 0.087 0.409 0.047 0.834 0.139 1.242 0.116 0.274 0.347 0.515 0.634 0.609 0.69 0.25 1.384 0.489 2.082 0.719 0.415 0.15 0.909 0.020 1.188-0.325 0.149-0.151 0.193-0.365 0.263-0.558 2.522-7.308 5.044-14.615 7.562-21.924 0.038-0.181 0.009-0.371-0.022-0.552-0.089-0.338-0.378-0.602-0.704-0.71-0.72-0.261-1.446-0.508-2.18-0.727-0.414-0.122-0.873 0.074-1.115 0.423-0.428 0.59-1.041 1.053-1.747 1.252-0.857 0.249-1.809 0.118-2.586-0.315-0.716-0.398-1.262-1.084-1.5-1.867-0.14-0.429-0.112-0.885-0.156-1.328-0.024-0.369-0.291-0.71-0.639-0.833-0.67-0.261-1.351-0.493-2.040-0.701-0.187-0.064-0.393-0.073-0.581-0.009z\"/>","t":"translate(8.260 6.243) scale(0.60982)"}};
+/* rad counter: official symbol from MTG Wiki, used as-is (yellow disc) */
+var RAD_SVG="<svg viewBox=\"-300 -300 520 520\"><circle cx=\"-40\" cy=\"-40\" r=\"260\" fill=\"#f2de00\"/><g transform=\"translate(-40 -40) scale(0.62) translate(40 40)\"><circle cx=\"-40\" cy=\"-40\" r=\"50\"/><path d=\"m -114.99969,-38.506523 a 75,75 0 0 0 37.5,64.952003 l -87.5,151.554 a 250,250 0 0 1 -125,-216.506003 z\"/><path transform=\"rotate(120,-39.999689,-38.506523)\" d=\"m -114.99969,-38.506523 a 75,75 0 0 0 37.5,64.952003 l -87.5,151.554 a 250,250 0 0 1 -125,-216.506003 z\"/><path transform=\"rotate(-120,-39.999689,-38.506523)\" d=\"m -114.99969,-38.506523 a 75,75 0 0 0 37.5,64.952003 l -87.5,151.554 a 250,250 0 0 1 -125,-216.506003 z\"/></g><circle cx=\"-40\" cy=\"-40\" r=\"254\" fill=\"none\" stroke=\"rgba(0,0,0,.35)\" stroke-width=\"12\"/></svg>";
+function tokenSvg(col,inner){
+  return '<svg viewBox="0 0 32 32"><circle cx="16" cy="16" r="15.3" fill="'+col+'" stroke="rgba(0,0,0,.35)" stroke-width="1.2"/>'+inner+'</svg>'; }
+function symTok(col,k){ return tokenSvg(col,'<g fill="#151515" transform="'+SYM[k].t+'">'+SYM[k].g+'</g>'); }
+function textTok(col,txt,fg){ return tokenSvg(col,'<text x="16" y="16.5" dominant-baseline="middle" text-anchor="middle" font-family="PixFont,monospace" font-size="'+(txt.length>2?7.5:10)+'" fill="'+(fg||"#151515")+'"'+(fg?' stroke="#151515" stroke-width=".8" paint-order="stroke"':'')+'>'+txt+'</text>'); }
+function initials(name){ var w=String(name||"?").trim().split(/\s+/); return ((w.length>1?w[0].charAt(0)+w[w.length-1].charAt(0):w[0].slice(0,2))||"?").toUpperCase(); }
+function manaIcon(k){ var c=MANA.filter(function(m){ return m[0]===k; })[0][2]; return symTok(c,k); }
+/* counters: official symbol where one exists, otherwise a short label until a symbol is provided */
+var CNT_COL={poison:"#a5d66f",energy:"#ffd54f",exp:"#d4a5e8",rad:"#f2de00",storm:"#9fc9f5",ticket:"#f5a3c4",tax:"#e8c46a"};
+var CNT_TXT={exp:"EXP",storm:"STM",tax:"TAX"};
+function counterIcon(k,label){
+  if(k==="rad") return RAD_SVG;
+  if(SYM[k]) return symTok(CNT_COL[k],k);
+  if(CNT_TXT[k]) return textTok(CNT_COL[k],CNT_TXT[k]);
+  var ini=String(label||"?").replace(/[^A-Za-z0-9]/g,"").slice(0,2).toUpperCase()||"?";
+  return textTok("#cfcfcf",ini);
+}
+var MANA=[["W","Bianco","#f8e7b9"],["U","Blu","#a9d5f5"],["B","Nero","#b0a7b8"],["R","Rosso","#f5a9a0"],["G","Verde","#a9e0b8"],["C","Incolore","#d8d8d8"]];
+function manaTotal(pl){ var t=0, m=pl.mana||{}; for(var k in m) t+=m[k]||0; return t; }
+function clearMana(pl){ pl.mana={}; }
+/* ---------- centre controls ---------- */
+document.getElementById("cUndo").addEventListener("click",undo);
+document.getElementById("cTurn").addEventListener("click",function(){
+  snap();
+  var nx=st.active, guard=0;
+  do{ nx=nextSeatCW(nx); guard++; }while(isDead(st.p[nx]) && guard<st.n);  /* skip eliminated players */
+  if(st.manaClear) st.p.forEach(clearMana);
+  st.active=nx; st.turn=(st.turn||1)+1; st.match.turnElapsed=0; save(); build(); sfx("bell"); vib(30);
+});
+
+/* ---------- fullscreen ---------- */
+function isFs(){ return document.fullscreenElement||document.webkitFullscreenElement||document.mozFullScreenElement; }
+function goFs(){ var el=document.documentElement; var fn=el.requestFullscreen||el.webkitRequestFullscreen||el.mozRequestFullScreen; if(fn){ try{ fn.call(el); }catch(e){} } }
+function exitFs(){ var ex=document.exitFullscreen||document.webkitExitFullscreen||document.mozCancelFullScreen; if(ex){ try{ ex.call(document); }catch(e){} } }
+var userExitedFs=false;
+function fsChange(){ if(!isFs()) userExitedFs=true; else userExitedFs=false; }
+document.addEventListener("fullscreenchange",fsChange);
+document.addEventListener("webkitfullscreenchange",fsChange);
+document.addEventListener("mozfullscreenchange",fsChange);
+document.getElementById("cFs").addEventListener("click",function(){
+  if(isFs()){ userExitedFs=true; exitFs(); }
+  else { userExitedFs=false; goFs(); }
+});
+document.addEventListener("touchend",function(){
+  audio(); wake();
+  if(!isFs() && !userExitedFs) goFs();
+},true);
+
+var tEl=document.getElementById("toast"),tT=null;
+function toast(m){ tEl.textContent=m; tEl.className="show"; if(tT)clearTimeout(tT); tT=setTimeout(function(){ tEl.className=""; },1600); }
+
+var rez=null;
+window.addEventListener("resize",function(){ if(rez)clearTimeout(rez); rez=setTimeout(build,250); });
+
+/* trap BACK */
+try{ history.pushState({k:1},""); }catch(e){}
+window.addEventListener("popstate",function(){
+  var open=document.querySelector(".sheet.on");
+  if(qpOpen) closePanel();
+  else if(open){ if(open.id==="cam") stopCam(); open.className="sheet"; }
+  try{ history.pushState({k:1},""); }catch(e){}
+});
+
+/* service worker (http only) */
+if("serviceWorker" in navigator && location.protocol.indexOf("http")===0){
+  navigator.serviceWorker.register("sw.js").catch(function(){});
+}
+
+/* keep the screen on during a game (Screen Wake Lock API, https only) */
+var wl=null;
+function wake(){
+  if(!st.wakeLock){ if(wl){ try{ wl.release(); }catch(e){} wl=null; } return; }
+  if(wl || !navigator.wakeLock || document.visibilityState!=="visible") return;
+  navigator.wakeLock.request("screen").then(function(l){ wl=l; l.addEventListener("release",function(){ wl=null; }); }).catch(function(){});
+}
+document.addEventListener("visibilitychange",function(){ if(document.visibilityState==="visible") wake(); else save(); });
+document.addEventListener("click",wake,true);
+window.addEventListener("pagehide",save);
+window.addEventListener("beforeunload",save);
+wake();
+openIDB().then(build);
+})();
+</script>
+</body>
+</html>
